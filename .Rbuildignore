@@ -1,0 +1,9 @@
+^LICENSE\.md$
+^CLAUDE\.md$
+^.*\.Rproj$
+^\.Rproj\.user$
+^renv$
+^renv\.lock$
+^\.github$
+^_pkgdown\.yml$
+^docs$
