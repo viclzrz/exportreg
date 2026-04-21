@@ -4,7 +4,7 @@
 \alias{to_excel}
 \title{Export a regression table to Excel}
 \usage{
-to_excel(x, file, sheet = "Table 1", open = FALSE)
+to_excel(x, file, sheet = "Table 1", open = FALSE, raw = FALSE, digits = NULL)
 }
 \arguments{
 \item{x}{A \code{regtab_table} object.}
@@ -15,6 +15,15 @@ to_excel(x, file, sheet = "Table 1", open = FALSE)
 
 \item{open}{Logical. If \code{TRUE}, attempt to open the file after writing.
 Default \code{FALSE}.}
+
+\item{raw}{Logical. If \code{TRUE}, estimate and SE cells are written as R
+numeric values (usable in Excel formulas) instead of pre-formatted
+character strings. All cell styling is still applied. Default \code{FALSE}.}
+
+\item{digits}{Integer or \code{NULL}. Number of decimal places for numeric
+formatting. \code{NULL} (default) uses \code{x$digits} set at \code{regtab()} time.
+An integer value overrides \code{x$digits} for this render call only.
+Ignored when \code{raw = TRUE}.}
 }
 \value{
 \code{x} invisibly.
@@ -28,6 +37,8 @@ No Java dependency.
 m1 <- lm(mpg ~ wt + cyl, data = mtcars)
 tab <- regtab(list("(1)" = m1))
 to_excel(tab, file = "table1.xlsx")
+to_excel(tab, file = "table1_raw.xlsx", raw = TRUE)
+to_excel(tab, file = "table1_5dp.xlsx", digits = 5L)
 }
 
 }

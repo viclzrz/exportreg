@@ -1,0 +1,257 @@
+---
+title: "Getting Started with exportreg"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting Started with exportreg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", echo = TRUE)
+library(exportreg)
+```
+
+`exportreg` turns a named list of model objects into a formatted regression
+table that can be printed to the console or exported to Excel or LaTeX.  This
+vignette walks through the main features using the built-in `mtcars` and
+`iris` datasets, plus a small synthetic panel for the fixed-effects and
+IV examples.
+
+---
+
+## 1  Basic OLS with mtcars
+
+Pass a **named** list of models to `regtab()`. The names become the column
+headers.
+
+```{r ols-models}
+m1 <- lm(mpg ~ wt + hp,        data = mtcars)
+m2 <- lm(mpg ~ wt + hp + disp, data = mtcars)
+```
+
+### Renaming and grouping columns
+
+`coef_map` renames raw coefficient names to display labels.  `col_groups`
+produces a spanning header row in the LaTeX output.
+
+```{r ols-table}
+coef_labels <- c(
+  "(Intercept)" = "Constant",
+  "wt"          = "Weight (1,000 lbs)",
+  "hp"          = "Horsepower",
+  "disp"        = "Displacement (cu.in.)"
+)
+
+extra_rows <- data.frame(
+  label = c("Dataset", "Outcome"),
+  "(1)" = c("mtcars", "mpg"),
+  "(2)" = c("mtcars", "mpg"),
+  check.names = FALSE,
+  stringsAsFactors = FALSE
+)
+
+tab_ols <- regtab(
+  models     = list("(1)" = m1, "(2)" = m2),
+  coef_map   = coef_labels,
+  add_rows   = extra_rows,
+  col_groups = c("(1)" = "Miles per Gallon", "(2)" = "Miles per Gallon")
+)
+
+print(tab_ols)
+```
+
+`add_rows` appends arbitrary labelled rows below the statistics block —
+useful for noting the dataset, clustering scheme, or bandwidth.
+
+### LaTeX output
+
+```{r ols-latex}
+to_latex(tab_ols)
+```
+
+`col_groups` is rendered as a `\multicolumn` spanning header with `\cmidrule`
+rules in the LaTeX output.
+
+---
+
+## 2  Factor variables with iris
+
+When a model includes a factor variable, `factor_labels` groups the dummy
+coefficients under a single indented header row.
+
+```{r iris-lm}
+m_iris <- lm(
+  Sepal.Length ~ Petal.Length + Petal.Width + Species,
+  data = iris
+)
+
+tab_iris <- regtab(
+  list("(1)" = m_iris),
+  coef_map = c(
+    "(Intercept)"       = "Constant",
+    "Petal.Length"      = "Petal length",
+    "Petal.Width"       = "Petal width",
+    "Speciesversicolor" = "versicolor",
+    "Speciesvirginica"  = "virginica"
+  ),
+  factor_labels = c("Species" = "Species (ref: setosa)")
+)
+
+print(tab_iris)
+to_latex(tab_iris)
+```
+
+`is_factor_header = TRUE` rows are printed without a standard-error line and
+sort immediately before their child coefficients.
+
+### GLM on a binary outcome
+
+`regtab()` also accepts `glm` objects.
+
+```{r iris-glm}
+iris2            <- iris
+iris2$virginica  <- as.integer(iris$Species == "virginica")
+
+m_glm <- glm(
+  virginica ~ Petal.Length + Petal.Width,
+  data   = iris2,
+  family = binomial()
+)
+
+tab_glm <- regtab(
+  list("(1)" = m_glm),
+  coef_map = c(
+    "(Intercept)"  = "Constant",
+    "Petal.Length" = "Petal length",
+    "Petal.Width"  = "Petal width"
+  )
+)
+
+print(tab_glm)
+```
+
+---
+
+## 3  Fixed effects and clustered SEs
+
+`fixest::feols()` is the primary model class. Fixed-effect variables are
+detected automatically from `model$fixef_vars` and displayed in a separate
+block. Standard errors clustered by `cluster = ~group` trigger a `Clusters`
+row in the statistics block.
+
+```{r fe-data}
+set.seed(42)
+n_groups <- 20L
+n_per    <- 15L
+group_id <- rep(seq_len(n_groups), each = n_per)
+x1 <- rnorm(n_groups * n_per)
+x2 <- rnorm(n_groups * n_per)
+y  <- 0.5 * x1 - 0.3 * x2 +
+      rep(rnorm(n_groups, sd = 0.5), each = n_per) +
+      rnorm(n_groups * n_per, sd = 0.4)
+
+panel_df <- data.frame(y = y, x1 = x1, x2 = x2, group = group_id)
+```
+
+```{r fe-models}
+m_fe1 <- fixest::feols(y ~ x1      | group, cluster = ~group, data = panel_df)
+m_fe2 <- fixest::feols(y ~ x1 + x2 | group, cluster = ~group, data = panel_df)
+
+tab_fe <- regtab(
+  models    = list("(1)" = m_fe1, "(2)" = m_fe2),
+  fe_labels = c("group" = "Group FE"),
+  drop      = "Intercept"
+)
+
+print(tab_fe)
+to_latex(tab_fe)
+```
+
+---
+
+## 4  IV estimation
+
+Add a second `|` separator to instrument an endogenous regressor.  The
+statistics block includes a `KP F-stat` row (Kleibergen–Paap weak-instrument
+F-statistic) when the model is estimated by 2SLS.
+
+```{r iv}
+panel_df$z <- -0.6 * x1 + rnorm(n_groups * n_per, sd = 0.8)
+
+m_iv <- fixest::feols(
+  y ~ x2 | group | x1 ~ z,
+  cluster = ~group,
+  data    = panel_df
+)
+
+tab_iv <- regtab(
+  models    = list("OLS" = m_fe2, "2SLS" = m_iv),
+  fe_labels = c("group" = "Group FE"),
+  drop      = "Intercept"
+)
+
+to_latex(tab_iv, format = "full")
+```
+
+`format = "full"` wraps the `tabular` environment in a complete LaTeX
+document with `\usepackage{booktabs}`, ready to compile standalone.
+
+---
+
+## 5  Multi-panel tables
+
+Pass a named list of `regtab_table` objects to `panels` to stack results
+vertically.  All panels must share identical column names.  Here we split
+`mtcars` by transmission type.
+
+```{r panels}
+auto_df   <- mtcars[mtcars$am == 0, ]
+manual_df <- mtcars[mtcars$am == 1, ]
+
+make_lm_list <- function(df) {
+  list(
+    "(1)" = lm(mpg ~ wt,      data = df),
+    "(2)" = lm(mpg ~ wt + hp, data = df)
+  )
+}
+
+short_map <- c(
+  "(Intercept)" = "Constant",
+  "wt"          = "Weight",
+  "hp"          = "Horsepower"
+)
+
+tab_auto   <- regtab(make_lm_list(auto_df),   coef_map = short_map)
+tab_manual <- regtab(make_lm_list(manual_df), coef_map = short_map)
+
+tab_panels <- regtab(
+  panels = list("Automatic" = tab_auto, "Manual" = tab_manual)
+)
+
+print(tab_panels)
+```
+
+Each panel gets a bold header row ("Panel A: Automatic", "Panel B: Manual")
+and the statistics block accumulates rows from both panels.
+
+---
+
+## 6  Excel export
+
+`to_excel()` writes to an `.xlsx` file using `openxlsx2` (no Java
+dependency).  Header rows are bold with a bottom border, section separators
+use thin top borders, and column widths are auto-fitted.
+
+```{r excel}
+f <- tempfile(fileext = ".xlsx")
+to_excel(tab_fe, file = f, sheet = "Results")
+file.remove(f)
+```
+
+The workbook is written to a temporary file and immediately removed so the
+vignette leaves no artefacts on disk.  In practice, supply a real path:
+
+```r
+to_excel(tab_fe, file = "results/table1.xlsx", sheet = "Table 1")
+```

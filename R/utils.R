@@ -324,6 +324,7 @@ build_stat_data <- function(tidy_list, model_names, digits) {
         stat      = sd$label,
         model     = model_names[[i]],
         value_fmt = format_stat(vals[[i]], sd$label, digits),
+        value_raw = vals[[i]],
         stringsAsFactors = FALSE
       )))
     }
@@ -332,7 +333,8 @@ build_stat_data <- function(tidy_list, model_names, digits) {
   if (length(rows) == 0L) {
     return(data.frame(
       stat = character(0L), model = character(0L),
-      value_fmt = character(0L), stringsAsFactors = FALSE
+      value_fmt = character(0L), value_raw = numeric(0L),
+      stringsAsFactors = FALSE
     ))
   }
   do.call(rbind, rows)

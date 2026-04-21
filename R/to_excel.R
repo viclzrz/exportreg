@@ -8,6 +8,13 @@
 #' @param sheet Character. Worksheet name. Default `"Table 1"`.
 #' @param open Logical. If `TRUE`, attempt to open the file after writing.
 #'   Default `FALSE`.
+#' @param raw Logical. If `TRUE`, estimate and SE cells are written as R
+#'   numeric values (usable in Excel formulas) instead of pre-formatted
+#'   character strings. All cell styling is still applied. Default `FALSE`.
+#' @param digits Integer or `NULL`. Number of decimal places for numeric
+#'   formatting. `NULL` (default) uses `x$digits` set at `regtab()` time.
+#'   An integer value overrides `x$digits` for this render call only.
+#'   Ignored when `raw = TRUE`.
 #'
 #' @return `x` invisibly.
 #'
@@ -16,15 +23,21 @@
 #' m1 <- lm(mpg ~ wt + cyl, data = mtcars)
 #' tab <- regtab(list("(1)" = m1))
 #' to_excel(tab, file = "table1.xlsx")
+#' to_excel(tab, file = "table1_raw.xlsx", raw = TRUE)
+#' to_excel(tab, file = "table1_5dp.xlsx", digits = 5L)
 #' }
 #'
 #' @export
-to_excel <- function(x, file, sheet = "Table 1", open = FALSE) {
+to_excel <- function(x, file, sheet = "Table 1", open = FALSE,
+                     raw = FALSE, digits = NULL) {
   if (missing(file)) stop("exportreg: `file` is required.", call. = FALSE)
+
+  d <- if (!is.null(digits)) as.integer(digits) else x$digits
+  digits_override <- !is.null(digits) && as.integer(digits) != x$digits
 
   mn       <- x$model_names
   n_models <- length(mn)
-  n_cols   <- n_models + 1L   # label col + one per model
+  n_cols   <- n_models + 1L
 
   wb <- openxlsx2::wb_workbook()
   wb <- openxlsx2::wb_add_worksheet(wb, sheet = sheet)
@@ -66,9 +79,21 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE) {
       row_vals[[grp_cols[[1L]]]] <- grp
     }
     write_row(as.list(row_vals))
+    grp_row <- current_row - 1L
     # Bold the group header row
     wb <- openxlsx2::wb_add_font(wb, sheet = sheet,
-                                  dims = row_dims(current_row - 1L), bold = TRUE)
+                                  dims = row_dims(grp_row), bold = TRUE)
+    # Merge cells for each group that spans multiple columns
+    for (grp in groups) {
+      grp_models <- names(x$col_groups)[x$col_groups == grp]
+      grp_cols   <- which(mn %in% grp_models) + 1L
+      if (length(grp_cols) < 2L) next
+      lo <- min(grp_cols); hi <- max(grp_cols)
+      wb <- openxlsx2::wb_merge_cells(
+        wb, sheet = sheet,
+        dims = openxlsx2::wb_dims(rows = grp_row, cols = lo:hi)
+      )
+    }
   }
 
   # --- Column header row (model names) --------------------------------------
@@ -87,24 +112,53 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE) {
 
   # --- Coefficient rows -------------------------------------------------------
   cd <- x$coef_data
-  term_order <- unique(cd[order(cd$row_order), c("term_display", "row_order",
-                                                   "is_factor_header")])
+  term_order <- unique(cd[order(cd$row_order),
+                          c("term_display", "row_order",
+                            "is_factor_header", "factor_group")])
   term_order <- term_order[!duplicated(term_order$term_display), ]
 
   for (i in seq_len(nrow(term_order))) {
     tdisp  <- term_order$term_display[[i]]
     is_hdr <- term_order$is_factor_header[[i]]
+    fg     <- term_order$factor_group[[i]]
 
     est_vals <- c(list(tdisp), lapply(mn, function(mod) {
       r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
-      if (nrow(r) == 0L || r$estimate_fmt[[1L]] == "") NULL else r$estimate_fmt[[1L]]
+      if (nrow(r) == 0L) return(NULL)
+      if (raw) {
+        if (is.na(r$estimate[[1L]])) NULL else r$estimate[[1L]]
+      } else if (digits_override && !is.na(r$estimate[[1L]])) {
+        star_str <- apply_stars(r$p.value[[1L]], x$stars)
+        paste0(format_estimate(r$estimate[[1L]], d), star_str)
+      } else {
+        if (r$estimate_fmt[[1L]] == "") NULL else r$estimate_fmt[[1L]]
+      }
     }))
+    est_row <- current_row
     write_row(est_vals)
+
+    # Factor header: bold label cell
+    if (is_hdr) {
+      wb <- openxlsx2::wb_add_font(wb, sheet = sheet,
+                                    dims = cell_dims(est_row, 1L), bold = TRUE)
+    } else if (!is.na(fg)) {
+      # Factor child: indent label cell
+      wb <- openxlsx2::wb_add_cell_style(wb, sheet = sheet,
+                                          dims = cell_dims(est_row, 1L),
+                                          indent = 1L)
+    }
 
     if (!is_hdr) {
       se_vals <- c(list(NULL), lapply(mn, function(mod) {
         r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
-        if (nrow(r) == 0L || r$se_fmt[[1L]] == "") NULL else r$se_fmt[[1L]]
+        if (nrow(r) == 0L) return(NULL)
+        if (raw) {
+          if (is.na(r$std.error[[1L]])) NULL else r$std.error[[1L]]
+        } else if (digits_override && !is.na(r$std.error[[1L]])) {
+          format_se(r$std.error[[1L]], d)
+        } else {
+          if (r$se_fmt[[1L]] == "") NULL else r$se_fmt[[1L]]
+        }
       }))
       write_row(se_vals)
     }
@@ -117,7 +171,14 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE) {
     for (sl in stat_labels) {
       vals <- c(list(sl), lapply(mn, function(mod) {
         r <- x$stat_data[x$stat_data$stat == sl & x$stat_data$model == mod, ]
-        if (nrow(r) == 0L || r$value_fmt[[1L]] == "") NULL else r$value_fmt[[1L]]
+        if (nrow(r) == 0L) return(NULL)
+        fmt <- if (digits_override && "value_raw" %in% names(r) &&
+                   !is.na(r$value_raw[[1L]])) {
+          format_stat(r$value_raw[[1L]], sl, d)
+        } else {
+          r$value_fmt[[1L]]
+        }
+        if (fmt == "") NULL else fmt
       }))
       write_row(vals)
     }

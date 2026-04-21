@@ -20,10 +20,21 @@
 |---|---|---|
 | 1 — Package infrastructure + all R source + tests | **Complete** | 118 passing, 0 failures |
 | 2 — regtab() + print method + tests | **Complete** | 162 passing, 0 failures |
-| 3 — Vignette `vignettes/labor-economics.Rmd` | **Not started** | — |
+| 3 — Vignette `vignettes/getting-started.Rmd` | **Complete** | — |
+| Layout plan — to_excel() + to_latex() rendering | **Complete** | 162 passing, 0 failures |
 
-`devtools::check()` result after step 2: **0 errors / 0 warnings / 0 notes.**
-`covr::package_coverage()` overall: **73.7%** (see coverage gaps section below).
+`devtools::check()` result after layout plan: **0 errors / 0 warnings / 0 notes.**
+`covr::package_coverage()` overall: **86.70%** after step 3 (see coverage gaps section below).
+
+### Layout plan changes
+- `to_excel()`: added `raw` and `digits` parameters.
+  - `raw = TRUE` writes numeric scalars to estimate/SE cells (formula-usable); all styling still applied.
+  - `digits` overrides `x$digits` for this render call only; re-derives formatted strings from raw `coef_data` columns.
+  - `col_groups` spanning header now calls `wb_merge_cells()` for groups covering ≥2 columns.
+  - Factor header rows (`is_factor_header = TRUE`) now bold the label cell.
+  - Factor child rows (`!is.na(factor_group) && !is_factor_header`) now indent the label cell via `wb_add_cell_style(..., indent = 1L)`.
+- `to_latex()`: added `digits` parameter with same override semantics; re-derives coef and stat formatting from raw values when overriding.
+- `utils.R`: `build_stat_data` now stores `value_raw` (numeric) in `stat_data` alongside `value_fmt`, enabling digits re-formatting in output functions.
 
 ### Step 2 changes
 - Added `tests/testthat/test-panels-and-display.R` with 44 tests covering:
@@ -149,7 +160,7 @@ structure(
     ),
     fe_data   = data.frame(fe_label, fe_raw, model, included),  # included = logical
     add_rows  = data.frame or NULL,   # columns: label + one per model name
-    stat_data = data.frame(stat, model, value_fmt),
+    stat_data = data.frame(stat, model, value_fmt, value_raw),  # value_raw numeric; used for digits re-formatting in to_excel/to_latex
     model_names = character,
     col_groups  = named character or NULL,
     digits      = integer,

@@ -4,7 +4,7 @@
 \alias{to_latex}
 \title{Export a regression table to LaTeX}
 \usage{
-to_latex(x, file = NULL, format = "fragment", note = NULL)
+to_latex(x, file = NULL, format = "fragment", note = NULL, digits = NULL)
 }
 \arguments{
 \item{x}{A \code{regtab_table} object.}
@@ -19,6 +19,10 @@ environment. \code{"full"} wraps it in a minimal \code{article} document with
 
 \item{note}{Character or \code{NULL}. Custom text appended after the standard
 significance note.}
+
+\item{digits}{Integer or \code{NULL}. Number of decimal places for numeric
+formatting. \code{NULL} (default) uses \code{x$digits} set at \code{regtab()} time.
+An integer value overrides \code{x$digits} for this render call only.}
 }
 \value{
 Character vector of LaTeX lines, invisibly.
@@ -36,6 +40,7 @@ m1 <- lm(mpg ~ wt + cyl, data = mtcars)
 tab <- regtab(list("(1)" = m1))
 to_latex(tab)
 to_latex(tab, file = "table1.tex", format = "full")
+to_latex(tab, digits = 2L)
 }
 
 }

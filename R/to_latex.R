@@ -14,6 +14,9 @@
 #'   `\\usepackage{booktabs}`.
 #' @param note Character or `NULL`. Custom text appended after the standard
 #'   significance note.
+#' @param digits Integer or `NULL`. Number of decimal places for numeric
+#'   formatting. `NULL` (default) uses `x$digits` set at `regtab()` time.
+#'   An integer value overrides `x$digits` for this render call only.
 #'
 #' @return Character vector of LaTeX lines, invisibly.
 #'
@@ -23,11 +26,15 @@
 #' tab <- regtab(list("(1)" = m1))
 #' to_latex(tab)
 #' to_latex(tab, file = "table1.tex", format = "full")
+#' to_latex(tab, digits = 2L)
 #' }
 #'
 #' @export
-to_latex <- function(x, file = NULL, format = "fragment", note = NULL) {
+to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
+                     digits = NULL) {
   format <- match.arg(format, c("fragment", "full"))
+  d <- if (!is.null(digits)) as.integer(digits) else x$digits
+  digits_override <- !is.null(digits) && as.integer(digits) != x$digits
   mn       <- x$model_names
   n_models <- length(mn)
   n_cols   <- n_models + 1L
@@ -78,10 +85,14 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL) {
       latex_escape(tdisp),
       vapply(mn, function(mod) {
         r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
-        if (nrow(r) == 0L || r$estimate_fmt[[1L]] == "") {
-          return("")
+        if (nrow(r) == 0L) return("")
+        fmt <- if (digits_override && !is.na(r$estimate[[1L]])) {
+          star_str <- apply_stars(r$p.value[[1L]], x$stars)
+          paste0(format_estimate(r$estimate[[1L]], d), star_str)
+        } else {
+          r$estimate_fmt[[1L]]
         }
-        latex_stars(r$estimate_fmt[[1L]])
+        if (fmt == "") "" else latex_stars(fmt)
       }, character(1L))
     )
     coef_lines <- c(coef_lines, row_line(est_cells))
@@ -91,7 +102,12 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL) {
         "",
         vapply(mn, function(mod) {
           r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
-          if (nrow(r) == 0L) "" else r$se_fmt[[1L]]
+          if (nrow(r) == 0L) return("")
+          if (digits_override && !is.na(r$std.error[[1L]])) {
+            format_se(r$std.error[[1L]], d)
+          } else {
+            r$se_fmt[[1L]]
+          }
         }, character(1L))
       )
       coef_lines <- c(coef_lines, row_line(se_cells))
@@ -106,7 +122,13 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL) {
       stat_display <- latex_stat_label(sl)
       vals <- vapply(mn, function(mod) {
         r <- x$stat_data[x$stat_data$stat == sl & x$stat_data$model == mod, ]
-        if (nrow(r) == 0L) "" else r$value_fmt[[1L]]
+        if (nrow(r) == 0L) return("")
+        if (digits_override && "value_raw" %in% names(r) &&
+            !is.na(r$value_raw[[1L]])) {
+          format_stat(r$value_raw[[1L]], sl, d)
+        } else {
+          r$value_fmt[[1L]]
+        }
       }, character(1L))
       stat_lines <- c(stat_lines, row_line(c(stat_display, vals)))
     }
