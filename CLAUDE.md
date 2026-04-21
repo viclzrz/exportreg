@@ -19,10 +19,20 @@
 | Step | Status | Tests |
 |---|---|---|
 | 1 — Package infrastructure + all R source + tests | **Complete** | 118 passing, 0 failures |
-| 2 — Vignette `vignettes/labor-economics.Rmd` | **Not started** | — |
+| 2 — regtab() + print method + tests | **Complete** | 162 passing, 0 failures |
+| 3 — Vignette `vignettes/labor-economics.Rmd` | **Not started** | — |
 
-`devtools::check()` result after step 1: **0 errors / 0 warnings / 0 notes.**
+`devtools::check()` result after step 2: **0 errors / 0 warnings / 0 notes.**
 `covr::package_coverage()` overall: **73.7%** (see coverage gaps section below).
+
+### Step 2 changes
+- Added `tests/testthat/test-panels-and-display.R` with 44 tests covering:
+  `assemble_panels`, `detect_i_vars`, `col_groups` display in `to_latex()`,
+  and `add_rows` display in `print.regtab_table()` and `to_latex()`.
+- Fixed bug in `to_latex.R`: `seq(lo + 1L, hi)` when `lo == hi` produced a
+  decreasing 2-element sequence in R, overwriting the multicolumn cell and
+  extending `cells` spuriously. Fix: guard with `if (hi > lo)`.
+
 
 ---
 

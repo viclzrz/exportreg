@@ -52,7 +52,7 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL) {
       if (length(grp_cols) == 0L) next
       lo <- min(grp_cols); hi <- max(grp_cols)
       cells[[lo]] <- paste0("\\multicolumn{", length(grp_cols), "}{c}{", grp, "}")
-      for (k in seq(lo + 1L, hi)) cells[[k]] <- ""
+      if (hi > lo) for (k in seq(lo + 1L, hi)) cells[[k]] <- ""
       cmidrule_parts <- c(cmidrule_parts,
                           paste0("\\cmidrule(lr){", lo, "-", hi, "}"))
     }
