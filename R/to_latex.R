@@ -70,6 +70,15 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
   header_cells <- c("", mn)
   header_line  <- row_line(header_cells)
 
+  # --- Dependent variable row -------------------------------------------------
+  depvar_cells <- c(
+    "Dep.\\ var.",
+    vapply(mn, function(mod) {
+      latex_escape(x$depvar_names[[mod]] %||% "")
+    }, character(1L))
+  )
+  depvar_line <- row_line(depvar_cells)
+
   # --- Coefficient rows -------------------------------------------------------
   cd <- x$coef_data
   term_order <- unique(cd[order(cd$row_order), c("term_display", "row_order",
@@ -193,6 +202,7 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
     group_lines,
     header_line,
     "\\midrule",
+    depvar_line,
     coef_lines,
     if (length(stat_lines) > 0L) c("\\midrule", stat_lines),
     if (length(fe_lines) > 0L || length(add_lines) > 0L)

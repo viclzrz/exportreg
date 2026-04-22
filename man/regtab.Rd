@@ -16,7 +16,8 @@ regtab(
   digits = 3L,
   col_groups = NULL,
   panels = NULL,
-  se_format = "se"
+  se_format = "se",
+  depvar_labels = NULL
 )
 }
 \arguments{
@@ -59,6 +60,11 @@ ignored.}
 under each coefficient. \code{"se"} (default) shows standard errors in
 parentheses; \code{"tstat"} shows absolute t-statistics in brackets; \code{"pvalue"}
 shows p-values in brackets.}
+
+\item{depvar_labels}{Named character vector mapping raw extracted dependent
+variable strings to display labels,
+e.g. \code{c("log(wage)" = "Log Wage")}. \code{NULL} (default) uses the raw
+extracted string.}
 }
 \value{
 An object of class \code{regtab_table}.

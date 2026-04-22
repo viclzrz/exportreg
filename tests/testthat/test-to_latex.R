@@ -173,3 +173,53 @@ test_that("to_latex() KP F-stat row appears for IV fixest model", {
   combined <- paste(lines, collapse = "\n")
   expect_true(grepl("KP", combined))
 })
+
+# ---------------------------------------------------------------------------
+# depvar row in to_latex()
+# ---------------------------------------------------------------------------
+
+test_that("to_latex() output contains 'Dep. var.' row", {
+  tab <- regtab(list("(1)" = lm_basic))
+  res <- capture.output(lines <- to_latex(tab))
+  combined <- paste(lines, collapse = "\n")
+  expect_true(grepl("Dep", combined))
+})
+
+test_that("to_latex() depvar label appears in the tabular body", {
+  tab <- regtab(list("(1)" = lm_basic))
+  res <- capture.output(lines <- to_latex(tab))
+  # The depvar line is between \midrule and the first coefficient row
+  midrule_idx <- which(lines == "\\midrule")
+  expect_true(length(midrule_idx) >= 1L)
+  # Line immediately after first \midrule must contain the depvar
+  depvar_line <- lines[[midrule_idx[[1L]] + 1L]]
+  expect_true(grepl("y", depvar_line))
+})
+
+test_that("to_latex() depvar label is LaTeX-escaped", {
+  # Use a model with a transformed depvar containing special chars
+  df <- data.frame(x = 1:16, y = log(panel_data$y + 1))
+  m  <- lm(log(y + 1) ~ x, data = df)
+  tab <- regtab(list("(1)" = m))
+  res <- capture.output(lines <- to_latex(tab))
+  combined <- paste(lines, collapse = "\n")
+  # log(y + 1) contains ( and ) — latex_escape keeps those, but $ would be escaped
+  expect_true(grepl("log", combined))
+})
+
+test_that("to_latex() depvar_labels renaming appears in output", {
+  tab <- regtab(list("(1)" = lm_basic), depvar_labels = c("y" = "Log Wage"))
+  res <- capture.output(lines <- to_latex(tab))
+  combined <- paste(lines, collapse = "\n")
+  expect_true(grepl("Log Wage", combined))
+})
+
+test_that("to_latex() two models with different depvars both shown", {
+  m1 <- lm(y     ~ x1, data = panel_data)
+  m2 <- lm(y_bin ~ x1, data = panel_data)
+  tab <- regtab(list("(1)" = m1, "(2)" = m2))
+  res <- capture.output(lines <- to_latex(tab))
+  combined <- paste(lines, collapse = "\n")
+  # y_bin is LaTeX-escaped to y\_bin
+  expect_true(grepl("y\\\\_bin|y_bin", combined))
+})

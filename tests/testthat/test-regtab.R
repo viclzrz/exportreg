@@ -4,7 +4,7 @@ test_that("regtab() returns a regtab_table with correct structure", {
   expect_s3_class(tab, "regtab_table")
   expect_named(tab, c("coef_data", "fe_data", "add_rows", "stat_data",
                        "model_names", "col_groups", "digits", "stars",
-                       "se_format", "se_type", "call"))
+                       "se_format", "se_type", "depvar_names", "call"))
   expect_equal(tab$model_names, c("(1)", "(2)"))
 })
 
@@ -205,4 +205,58 @@ test_that("build_se_note() mixed types groups by type with column labels", {
 test_that("format_bracket() formats correctly and handles NA", {
   expect_equal(exportreg:::format_bracket(0.456, 3L), "[0.456]")
   expect_equal(exportreg:::format_bracket(NA_real_, 3L), "")
+})
+
+# ---------------------------------------------------------------------------
+# depvar_names slot
+# ---------------------------------------------------------------------------
+
+test_that("regtab() stores $depvar_names, names equal model_names", {
+  tab <- regtab(list("(1)" = lm_basic, "(2)" = lm_extended))
+  expect_type(tab$depvar_names, "character")
+  expect_named(tab$depvar_names, c("(1)", "(2)"))
+})
+
+test_that("regtab() $depvar_names contains the raw extracted variable name", {
+  tab <- regtab(list("(1)" = lm_basic))
+  expect_equal(unname(tab$depvar_names), "y")
+})
+
+test_that("regtab() depvar_labels renames matched depvar", {
+  tab <- regtab(
+    list("(1)" = lm_basic),
+    depvar_labels = c("y" = "Log Wage")
+  )
+  expect_equal(unname(tab$depvar_names), "Log Wage")
+})
+
+test_that("regtab() depvar_labels does not rename unmatched depvar", {
+  tab <- regtab(
+    list("(1)" = lm_basic),
+    depvar_labels = c("other" = "Other")
+  )
+  expect_equal(unname(tab$depvar_names), "y")
+})
+
+test_that("regtab() two models with different depvars stored correctly", {
+  m_y   <- lm(y     ~ x1, data = panel_data)
+  m_bin <- lm(y_bin ~ x1, data = panel_data)
+  tab <- regtab(list("(1)" = m_y, "(2)" = m_bin))
+  expect_equal(unname(tab$depvar_names[["(1)"]]), "y")
+  expect_equal(unname(tab$depvar_names[["(2)"]]), "y_bin")
+})
+
+test_that("assemble_panels() propagates $depvar_names from first panel", {
+  tab1 <- regtab(list("(1)" = lm_basic))
+  tab2 <- regtab(list("(1)" = lm_extended))
+  combined <- regtab(panels = list("A" = tab1, "B" = tab2))
+  expect_equal(combined$depvar_names, tab1$depvar_names)
+})
+
+test_that("print.regtab_table() output contains depvar label", {
+  tab <- regtab(list("(1)" = lm_basic))
+  out <- capture.output(print(tab))
+  combined <- paste(out, collapse = "\n")
+  expect_true(grepl("Dep\\. var\\.", combined))
+  expect_true(grepl("\\by\\b", combined))
 })

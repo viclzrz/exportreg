@@ -110,6 +110,15 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE,
                                   left_border = NULL,
                                   right_border = NULL)
 
+  # --- Dependent variable row ------------------------------------------------
+  depvar_row_num <- current_row
+  write_row(c(list("Dep. var."), lapply(mn, function(mod) {
+    v <- x$depvar_names[[mod]] %||% ""
+    if (identical(v, "")) NULL else v
+  })))
+  wb <- openxlsx2::wb_add_font(wb, sheet = sheet,
+                                dims = row_dims(depvar_row_num), bold = TRUE)
+
   # --- Coefficient rows -------------------------------------------------------
   cd <- x$coef_data
   term_order <- unique(cd[order(cd$row_order),

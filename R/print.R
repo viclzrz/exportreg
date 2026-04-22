@@ -91,10 +91,16 @@ print.regtab_table <- function(x, ...) {
     }
   }
 
+  # --- Build depvar row -------------------------------------------------------
+  depvar_row <- c("Dep. var.", vapply(mn, function(mod) {
+    x$depvar_names[[mod]] %||% ""
+  }, character(1L)))
+
   # --- Assemble all rows ------------------------------------------------------
   header <- c("", mn)
   all_rows <- c(
     list(header),
+    list(depvar_row),
     display_rows,
     if (length(stat_rows) > 0L) c(list(c("---", rep("---", n_models))), stat_rows),
     if (length(fe_rows) > 0L || length(add_rows_list) > 0L)

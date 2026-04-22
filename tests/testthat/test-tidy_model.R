@@ -181,3 +181,38 @@ test_that("tidy_model.fixest IV model enters KP branch and populates kp_fstat", 
   expect_false(is.na(tm$glance$kp_fstat))
   expect_true(tm$glance$kp_fstat > 0)
 })
+
+# ---------------------------------------------------------------------------
+# depvar slot
+# ---------------------------------------------------------------------------
+
+test_that("tidy_model.lm returns $depvar == 'y'", {
+  tm <- exportreg:::tidy_model(lm_basic)
+  expect_type(tm$depvar, "character")
+  expect_equal(length(tm$depvar), 1L)
+  expect_equal(tm$depvar, "y")
+})
+
+test_that("tidy_model.glm returns $depvar == 'y_bin'", {
+  tm <- exportreg:::tidy_model(glm_basic)
+  expect_type(tm$depvar, "character")
+  expect_equal(tm$depvar, "y_bin")
+})
+
+test_that("tidy_model.fixest returns $depvar == 'y'", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_multi_fe)
+  expect_type(tm$depvar, "character")
+  expect_equal(tm$depvar, "y")
+})
+
+test_that("tidy_model.fixest IV model returns correct $depvar", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_iv)
+  expect_type(tm$depvar, "character")
+  expect_equal(tm$depvar, "y")
+})

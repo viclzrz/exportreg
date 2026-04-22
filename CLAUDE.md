@@ -18,9 +18,9 @@
 
 | Metric | Value |
 |---|---|
-| Tests | **225 passing, 0 failures** |
+| Tests | **257 passing, 0 failures** |
 | `devtools::check()` | **0 errors / 0 warnings / 0 notes** |
-| Overall coverage | **87.82%** |
+| Overall coverage | **87.53%** |
 
 ### Step completion status
 
@@ -32,6 +32,7 @@
 | Layout plan — to_excel() + to_latex() rendering | **Complete** | 162 passing |
 | se_format + se_type + se_note plan | **Complete** | 201 passing |
 | Coverage gap closure (se_format paths, IV/KP, latex_stat_label) | **Complete** | 225 passing |
+| Dependent variable row in all output functions | **Complete** | 257 passing |
 
 ---
 
@@ -54,6 +55,10 @@
 - **SE note automation**: `se_type` auto-detected per model from the model
   object (e.g. `"IID"`, `"Clustered (firm_id)"`); `build_se_note()` assembles
   a human-readable note appended to the significance line at render time
+- **Dependent variable row**: always displayed between the column-numbers
+  header and the first coefficient row in all three outputs (`print`,
+  `to_latex`, `to_excel`); raw label auto-extracted from the model formula;
+  `depvar_labels` renames matched strings
 - **`factor_labels`** grouped display: header row + indented child rows
 - **`col_groups`** spanning headers in LaTeX and Excel
 - **`add_rows`** for manually supplied rows (e.g. control indicators)
@@ -149,7 +154,11 @@ list(
 
   fe_vars = character,       # from model$fixef_vars (fixest only); NULL otherwise
 
-  se_type = character(1L)    # SE type label, e.g. "IID", "Clustered (firm_id)"
+  se_type = character(1L),   # SE type label, e.g. "IID", "Clustered (firm_id)"
+
+  depvar  = character(1L)    # dependent variable string, e.g. "log(wage)"
+                             # fixest: deparse(model$fml[[2L]])
+                             # others: deparse(formula(model)[[2L]])
 )
 ```
 
@@ -208,9 +217,10 @@ structure(
     col_groups  = named character or NULL,
     digits      = integer,
     stars       = numeric,
-    se_format   = character,          # "se" | "tstat" | "pvalue"
-    se_type     = named character,    # model_name → SE type label
-    call        = call
+    se_format    = character,          # "se" | "tstat" | "pvalue"
+    se_type      = named character,    # model_name → SE type label
+    depvar_names = named character,    # model_name → resolved depvar label
+    call         = call
   ),
   class = "regtab_table"
 )

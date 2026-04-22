@@ -134,6 +134,9 @@ tidy_model_fixest <- function(model) {
   # FE variables
   fe_vars <- tryCatch(model$fixef_vars, error = function(e) NULL)
 
+  # Dependent variable
+  depvar <- tryCatch(deparse(model$fml[[2L]]), error = function(e) NA_character_)
+
   # SE type label
   se_type <- tryCatch(attr(model$se, "vcov_type"), error = function(e) NULL)
   if (is.null(se_type)) {
@@ -144,7 +147,8 @@ tidy_model_fixest <- function(model) {
   }
   if (is.null(se_type) || is.na(se_type)) se_type <- "IID"
 
-  list(coefs = coefs, glance = gl, fe_vars = fe_vars, se_type = se_type)
+  list(coefs = coefs, glance = gl, fe_vars = fe_vars, se_type = se_type,
+       depvar = depvar)
 }
 
 # ---------------------------------------------------------------------------
@@ -160,7 +164,11 @@ tidy_model_lm <- function(model) {
   if ("r.squared" %in% names(bg))  gl$r2   <- bg$r.squared
   if ("sigma" %in% names(bg))      gl$rmse <- bg$sigma
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
+  depvar <- tryCatch(deparse(stats::formula(model)[[2L]]),
+                     error = function(e) NA_character_)
+
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID",
+       depvar = depvar)
 }
 
 # ---------------------------------------------------------------------------
@@ -175,7 +183,11 @@ tidy_model_glm <- function(model) {
   gl$nobs <- as.integer(stats::nobs(model))
   # glm uses deviance-based pseudo-R²; leave r2 as NA (not meaningful for all families)
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
+  depvar <- tryCatch(deparse(stats::formula(model)[[2L]]),
+                     error = function(e) NA_character_)
+
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID",
+       depvar = depvar)
 }
 
 # ---------------------------------------------------------------------------
@@ -210,7 +222,11 @@ tidy_model_felm <- function(model) {
       "IID"
   }, error = function(e) "IID")
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = se_type)
+  depvar <- tryCatch(deparse(stats::formula(model)[[2L]]),
+                     error = function(e) NA_character_)
+
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = se_type,
+       depvar = depvar)
 }
 
 # ---------------------------------------------------------------------------
@@ -226,5 +242,9 @@ tidy_model_ivreg <- function(model) {
   if ("r.squared" %in% names(bg)) gl$r2   <- bg$r.squared
   if ("sigma" %in% names(bg))     gl$rmse <- bg$sigma
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
+  depvar <- tryCatch(deparse(stats::formula(model)[[2L]]),
+                     error = function(e) NA_character_)
+
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID",
+       depvar = depvar)
 }

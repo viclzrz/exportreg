@@ -31,6 +31,10 @@
 #'   under each coefficient. `"se"` (default) shows standard errors in
 #'   parentheses; `"tstat"` shows absolute t-statistics in brackets; `"pvalue"`
 #'   shows p-values in brackets.
+#' @param depvar_labels Named character vector mapping raw extracted dependent
+#'   variable strings to display labels,
+#'   e.g. `c("log(wage)" = "Log Wage")`. `NULL` (default) uses the raw
+#'   extracted string.
 #'
 #' @return An object of class `regtab_table`.
 #'
@@ -55,7 +59,8 @@ regtab <- function(
     digits        = 3L,
     col_groups    = NULL,
     panels        = NULL,
-    se_format     = "se"
+    se_format     = "se",
+    depvar_labels = NULL
 ) {
   # --- panels mode: assemble pre-built regtab_table objects vertically ------
   if (!is.null(panels)) {
@@ -106,20 +111,32 @@ regtab <- function(
   }, character(1L))
   names(se_type) <- model_names
 
+  # --- Build depvar_names vector (one resolved label per model) --------------
+  depvar_names <- vapply(model_names, function(mod) {
+    raw <- tidy_list[[mod]]$depvar
+    if (is.null(raw) || is.na(raw)) raw <- ""
+    if (!is.null(depvar_labels) && raw %in% names(depvar_labels))
+      depvar_labels[[raw]]
+    else
+      raw
+  }, character(1L))
+  names(depvar_names) <- model_names
+
   # --- Return regtab_table ---------------------------------------------------
   structure(
     list(
-      coef_data   = coef_data,
-      fe_data     = fe_data,
-      add_rows    = add_rows,
-      stat_data   = stat_data,
-      model_names = model_names,
-      col_groups  = col_groups,
-      digits      = digits,
-      stars       = stars,
-      se_format   = se_format,
-      se_type     = se_type,
-      call        = match.call()
+      coef_data    = coef_data,
+      fe_data      = fe_data,
+      add_rows     = add_rows,
+      stat_data    = stat_data,
+      model_names  = model_names,
+      col_groups   = col_groups,
+      digits       = digits,
+      stars        = stars,
+      se_format    = se_format,
+      se_type      = se_type,
+      depvar_names = depvar_names,
+      call         = match.call()
     ),
     class = "regtab_table"
   )
@@ -184,17 +201,18 @@ assemble_panels <- function(panels, col_groups) {
 
   structure(
     list(
-      coef_data   = do.call(rbind, coef_blocks),
-      fe_data     = do.call(rbind, fe_blocks),
-      add_rows    = NULL,
-      stat_data   = do.call(rbind, stat_blocks),
-      model_names = model_names,
-      col_groups  = col_groups,
-      digits      = panels[[1L]]$digits,
-      stars       = panels[[1L]]$stars,
-      se_format   = panels[[1L]]$se_format,
-      se_type     = panels[[1L]]$se_type,
-      call        = match.call()
+      coef_data    = do.call(rbind, coef_blocks),
+      fe_data      = do.call(rbind, fe_blocks),
+      add_rows     = NULL,
+      stat_data    = do.call(rbind, stat_blocks),
+      model_names  = model_names,
+      col_groups   = col_groups,
+      digits       = panels[[1L]]$digits,
+      stars        = panels[[1L]]$stars,
+      se_format    = panels[[1L]]$se_format,
+      se_type      = panels[[1L]]$se_type,
+      depvar_names = panels[[1L]]$depvar_names,
+      call         = match.call()
     ),
     class = "regtab_table"
   )

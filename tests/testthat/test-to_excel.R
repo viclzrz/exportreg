@@ -139,3 +139,44 @@ test_that("to_excel() raw=TRUE writes numeric SE to file", {
   expect_no_error(to_excel(tab, file = tmp, raw = TRUE))
   expect_true(file.exists(tmp))
 })
+
+# ---------------------------------------------------------------------------
+# depvar row in to_excel()
+# ---------------------------------------------------------------------------
+
+test_that("to_excel() with depvar_names writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic))
+  expect_equal(unname(tab$depvar_names), "y")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() with depvar_labels writes correct label", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), depvar_labels = c("y" = "Log Wage"))
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  # "Log Wage" must appear somewhere in the sheet
+  expect_true(any(vapply(dat, function(col) any(col == "Log Wage", na.rm = TRUE),
+                         logical(1L))))
+})
+
+test_that("to_excel() depvar row appears for two models with different depvars", {
+  skip_if_not_installed("openxlsx2")
+  m1 <- lm(y     ~ x1, data = panel_data)
+  m2 <- lm(y_bin ~ x1, data = panel_data)
+  tab <- regtab(list("(1)" = m1, "(2)" = m2))
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  expect_true(any(vapply(dat, function(col) any(col == "y_bin", na.rm = TRUE),
+                         logical(1L))))
+})
