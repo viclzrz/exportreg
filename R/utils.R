@@ -1,6 +1,9 @@
 # Internal utility helpers for exportreg
 # None of these are exported.
 
+# Null-coalescing operator: return `a` if non-NULL, else `b`
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
 # ---------------------------------------------------------------------------
 # Stars
 # ---------------------------------------------------------------------------
@@ -63,6 +66,55 @@ format_estimate <- function(x, digits) {
 #' @noRd
 format_se <- function(x, digits) {
   ifelse(is.na(x), "", paste0("(", format_estimate(x, digits), ")"))
+}
+
+#' Format a value in square brackets "[0.xxx]"
+#'
+#' Used for t-statistics and p-values when se_format != "se".
+#'
+#' @param x numeric vector
+#' @param digits integer
+#' @return character vector
+#' @noRd
+format_bracket <- function(x, digits) {
+  ifelse(is.na(x), "", paste0("[", format_estimate(x, digits), "]"))
+}
+
+#' Build a human-readable SE-format / SE-type note string
+#'
+#' @param se_type named character vector; names are model labels
+#' @param se_format character scalar: "se", "tstat", or "pvalue"
+#' @param latex logical: whether to use math-mode markup
+#' @return character scalar
+#' @noRd
+build_se_note <- function(se_type, se_format, latex = FALSE) {
+  bracket_label <- switch(se_format,
+    "se"     = "SE in parentheses",
+    "tstat"  = if (latex) "$t$-statistics in brackets"
+               else       "t-statistics in brackets",
+    "pvalue" = if (latex) "$p$-values in brackets"
+               else       "p-values in brackets"
+  )
+
+  unique_types <- unique(unname(se_type))
+  model_names  <- names(se_type)
+
+  se_type_str <- if (length(unique_types) == 1L) {
+    unique_types[[1L]]
+  } else {
+    parts <- character(0L)
+    seen  <- character(0L)
+    for (tp in unname(se_type)) {
+      if (tp %in% seen) next
+      seen <- c(seen, tp)
+      cols    <- model_names[se_type == tp]
+      col_str <- paste0("(", paste(cols, collapse = ", "), ")")
+      parts   <- c(parts, paste0(tp, " ", col_str))
+    }
+    paste(parts, collapse = "; ")
+  }
+
+  paste0(bracket_label, ". SE: ", se_type_str)
 }
 
 #' Format a fit statistic value

@@ -135,3 +135,49 @@ test_that("models with non-overlapping regressors are both extracted", {
   expect_true("x1" %in% tm1$coefs$term)
   expect_true("x1" %in% tm2$coefs$term)
 })
+
+# ---------------------------------------------------------------------------
+# se_type slot (4th slot)
+# ---------------------------------------------------------------------------
+
+test_that("tidy_model.lm returns se_type == 'IID'", {
+  tm <- exportreg:::tidy_model(lm_basic)
+  expect_type(tm$se_type, "character")
+  expect_equal(tm$se_type, "IID")
+})
+
+test_that("tidy_model.glm returns se_type == 'IID'", {
+  tm <- exportreg:::tidy_model(glm_basic)
+  expect_type(tm$se_type, "character")
+  expect_equal(tm$se_type, "IID")
+})
+
+test_that("tidy_model.fixest IID model returns se_type == 'IID'", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_no_fe)
+  expect_type(tm$se_type, "character")
+  expect_equal(length(tm$se_type), 1L)
+  # Without explicit clustering, fixest uses IID by default
+  expect_equal(tm$se_type, "IID")
+})
+
+test_that("tidy_model.fixest clustered model returns se_type containing 'Clustered'", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_clustered)
+  expect_type(tm$se_type, "character")
+  expect_true(grepl("Clustered", tm$se_type))
+})
+
+test_that("tidy_model.fixest IV model enters KP branch and populates kp_fstat", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_iv)
+  expect_type(tm$glance$kp_fstat, "double")
+  expect_false(is.na(tm$glance$kp_fstat))
+  expect_true(tm$glance$kp_fstat > 0)
+})

@@ -15,7 +15,8 @@ regtab(
   stars = c(0.1, 0.05, 0.01),
   digits = 3L,
   col_groups = NULL,
-  panels = NULL
+  panels = NULL,
+  se_format = "se"
 )
 }
 \arguments{
@@ -53,6 +54,11 @@ spanning group header label.}
 \item{panels}{Named list of \code{regtab_table} objects for multi-panel tables.
 All panels must have identical \code{model_names}. When supplied, \code{models} is
 ignored.}
+
+\item{se_format}{Character scalar controlling what appears in the second row
+under each coefficient. \code{"se"} (default) shows standard errors in
+parentheses; \code{"tstat"} shows absolute t-statistics in brackets; \code{"pvalue"}
+shows p-values in brackets.}
 }
 \value{
 An object of class \code{regtab_table}.

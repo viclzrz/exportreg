@@ -3,7 +3,8 @@ test_that("regtab() returns a regtab_table with correct structure", {
 
   expect_s3_class(tab, "regtab_table")
   expect_named(tab, c("coef_data", "fe_data", "add_rows", "stat_data",
-                       "model_names", "col_groups", "digits", "stars", "call"))
+                       "model_names", "col_groups", "digits", "stars",
+                       "se_format", "se_type", "call"))
   expect_equal(tab$model_names, c("(1)", "(2)"))
 })
 
@@ -138,4 +139,70 @@ test_that("print.regtab_table runs without error and returns invisibly", {
   out <- capture.output(res <- print(tab))
   expect_s3_class(res, "regtab_table")
   expect_true(length(out) > 0L)
+})
+
+# ---------------------------------------------------------------------------
+# se_format + se_type new slots
+# ---------------------------------------------------------------------------
+
+test_that("regtab() default se_format is 'se' and se_type is named character", {
+  tab <- regtab(list("(1)" = lm_basic, "(2)" = lm_extended))
+  expect_equal(tab$se_format, "se")
+  expect_type(tab$se_type, "character")
+  expect_named(tab$se_type, c("(1)", "(2)"))
+})
+
+test_that("regtab() se_type names equal model_names", {
+  tab <- regtab(list("OLS" = lm_basic))
+  expect_equal(names(tab$se_type), tab$model_names)
+})
+
+test_that("regtab() stores se_format = 'tstat' correctly", {
+  tab <- regtab(list("(1)" = lm_basic), se_format = "tstat")
+  expect_equal(tab$se_format, "tstat")
+})
+
+test_that("regtab() stores se_format = 'pvalue' correctly", {
+  tab <- regtab(list("(1)" = lm_basic), se_format = "pvalue")
+  expect_equal(tab$se_format, "pvalue")
+})
+
+test_that("regtab() errors on invalid se_format", {
+  expect_error(regtab(list("(1)" = lm_basic), se_format = "bad"),
+               regexp = "should be one of")
+})
+
+test_that("assemble_panels() inherits se_format and se_type from first panel", {
+  tab1 <- regtab(list("(1)" = lm_basic), se_format = "tstat")
+  tab2 <- regtab(list("(1)" = lm_extended), se_format = "tstat")
+  combined <- regtab(panels = list("A" = tab1, "B" = tab2))
+  expect_equal(combined$se_format, "tstat")
+  expect_equal(combined$se_type, tab1$se_type)
+})
+
+test_that("build_se_note() uniform IID type, se_format='se'", {
+  se_type <- c("(1)" = "IID", "(2)" = "IID")
+  result <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
+  expect_equal(result, "SE in parentheses. SE: IID")
+})
+
+test_that("build_se_note() uniform clustered type, se_format='tstat', latex=TRUE", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result <- exportreg:::build_se_note(se_type, "tstat", latex = TRUE)
+  expect_true(grepl("t\\$-statistics", result))
+  expect_true(grepl("Clustered \\(firm_id\\)", result))
+})
+
+test_that("build_se_note() mixed types groups by type with column labels", {
+  se_type <- c("(1)" = "IID", "(2)" = "Clustered (x)")
+  result <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
+  expect_true(grepl("IID", result))
+  expect_true(grepl("Clustered", result))
+  expect_true(grepl("\\(1\\)", result))
+  expect_true(grepl("\\(2\\)", result))
+})
+
+test_that("format_bracket() formats correctly and handles NA", {
+  expect_equal(exportreg:::format_bracket(0.456, 3L), "[0.456]")
+  expect_equal(exportreg:::format_bracket(NA_real_, 3L), "")
 })

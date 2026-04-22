@@ -98,16 +98,29 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
     coef_lines <- c(coef_lines, row_line(est_cells))
 
     if (!is_hdr) {
+      se_fmt_choice <- if (!is.null(x$se_format)) x$se_format else "se"
       se_cells <- c(
         "",
         vapply(mn, function(mod) {
           r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
           if (nrow(r) == 0L) return("")
-          if (digits_override && !is.na(r$std.error[[1L]])) {
-            format_se(r$std.error[[1L]], d)
-          } else {
+          switch(se_fmt_choice,
+            "se" = {
+              if (digits_override && !is.na(r$std.error[[1L]]))
+                format_se(r$std.error[[1L]], d)
+              else r$se_fmt[[1L]]
+            },
+            "tstat" = {
+              if (is.na(r$estimate[[1L]]) || is.na(r$std.error[[1L]]) ||
+                  r$std.error[[1L]] == 0) ""
+              else format_bracket(abs(r$estimate[[1L]] / r$std.error[[1L]]), d)
+            },
+            "pvalue" = {
+              if (is.na(r$p.value[[1L]])) ""
+              else format_bracket(r$p.value[[1L]], d)
+            },
             r$se_fmt[[1L]]
-          }
+          )
         }, character(1L))
       )
       coef_lines <- c(coef_lines, row_line(se_cells))
@@ -162,7 +175,10 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
   }
 
   # --- Significance note -------------------------------------------------------
-  note_text <- "$^{*}$ p<0.1, $^{**}$ p<0.05, $^{***}$ p<0.01"
+  stars_note  <- "*** $p<0.01$, ** $p<0.05$, * $p<0.1$"
+  se_type_val <- x$se_type %||% stats::setNames(rep("IID", length(mn)), mn)
+  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se", latex = TRUE)
+  note_text <- paste0(stars_note, ". ", se_note_str)
   if (!is.null(note) && nchar(note) > 0L) {
     note_text <- paste0(note_text, ". ", note)
   }

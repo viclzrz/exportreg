@@ -116,23 +116,35 @@ tidy_model_fixest <- function(model) {
   # KP F-stat (IV models only)
   iv_first <- tryCatch(model$iv_first_stage, error = function(e) NULL)
   if (!is.null(iv_first)) {
-    # iv_first_stage is a list of first-stage fixest objects; extract KP stat
-    kp <- tryCatch(
-      {
-        # fixest stores the KP stat in the $irls_iter or as model stat
-        # The Kleibergen-Paap F is accessible via summary(model)$iv_stat
+    # Primary: fitstat("kpr") API (fixest >= 0.12)
+    kp <- tryCatch({
+      fs <- fixest::fitstat(model, "kpr")
+      fs$kpr$stat
+    }, error = function(e) NULL)
+    # Fallback: legacy iv_stat slot
+    if (is.null(kp) || is.na(kp)) {
+      kp <- tryCatch({
         sm <- summary(model)
         sm$iv_stat[["KP F-stat"]]
-      },
-      error = function(e) NULL
-    )
+      }, error = function(e) NULL)
+    }
     if (!is.null(kp) && !is.na(kp)) gl$kp_fstat <- as.numeric(kp)
   }
 
   # FE variables
   fe_vars <- tryCatch(model$fixef_vars, error = function(e) NULL)
 
-  list(coefs = coefs, glance = gl, fe_vars = fe_vars)
+  # SE type label
+  se_type <- tryCatch(attr(model$se, "vcov_type"), error = function(e) NULL)
+  if (is.null(se_type)) {
+    se_type <- tryCatch(
+      attr(stats::vcov(model), "vcov_type"),
+      error = function(e) "IID"
+    )
+  }
+  if (is.null(se_type) || is.na(se_type)) se_type <- "IID"
+
+  list(coefs = coefs, glance = gl, fe_vars = fe_vars, se_type = se_type)
 }
 
 # ---------------------------------------------------------------------------
@@ -148,7 +160,7 @@ tidy_model_lm <- function(model) {
   if ("r.squared" %in% names(bg))  gl$r2   <- bg$r.squared
   if ("sigma" %in% names(bg))      gl$rmse <- bg$sigma
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL)
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
 }
 
 # ---------------------------------------------------------------------------
@@ -163,7 +175,7 @@ tidy_model_glm <- function(model) {
   gl$nobs <- as.integer(stats::nobs(model))
   # glm uses deviance-based pseudo-R²; leave r2 as NA (not meaningful for all families)
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL)
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
 }
 
 # ---------------------------------------------------------------------------
@@ -189,7 +201,16 @@ tidy_model_felm <- function(model) {
   )
   if (!is.null(n_cl)) gl$nobs_clusters <- as.integer(n_cl)
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL)
+  # SE type label
+  se_type <- tryCatch({
+    cv <- names(model$clustervar)
+    if (length(cv) > 0L)
+      paste0("Clustered (", paste(cv, collapse = " & "), ")")
+    else
+      "IID"
+  }, error = function(e) "IID")
+
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = se_type)
 }
 
 # ---------------------------------------------------------------------------
@@ -205,5 +226,5 @@ tidy_model_ivreg <- function(model) {
   if ("r.squared" %in% names(bg)) gl$r2   <- bg$r.squared
   if ("sigma" %in% names(bg))     gl$rmse <- bg$sigma
 
-  list(coefs = coefs, glance = gl, fe_vars = NULL)
+  list(coefs = coefs, glance = gl, fe_vars = NULL, se_type = "IID")
 }

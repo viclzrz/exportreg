@@ -42,3 +42,100 @@ test_that("to_excel() works with fixest model and FE block", {
   expect_no_error(to_excel(tab, file = tmp))
   expect_true(file.exists(tmp))
 })
+
+# ---------------------------------------------------------------------------
+# se_format tests
+# ---------------------------------------------------------------------------
+
+test_that("to_excel() se_format='tstat' writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), se_format = "tstat")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() se_format='pvalue' writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), se_format = "pvalue")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+# ---------------------------------------------------------------------------
+# Additional coverage: col_groups, raw+se_format, digits override,
+# factor_labels, add_rows
+# ---------------------------------------------------------------------------
+
+test_that("to_excel() with col_groups writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(
+    list("(1)" = lm_basic, "(2)" = lm_extended, "(3)" = lm_extended),
+    col_groups = c("(1)" = "OLS", "(2)" = "OLS", "(3)" = "Extended")
+  )
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() raw=TRUE + se_format='tstat' writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), se_format = "tstat")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp, raw = TRUE))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() raw=TRUE + se_format='pvalue' writes without error", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), se_format = "pvalue")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp, raw = TRUE))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() digits override reformats stat block", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic))
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp, digits = 5L))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() with factor_labels renders header and indented rows", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(
+    list("(1)" = lm_factor),
+    factor_labels = c("region" = "Region (ref: Centro)")
+  )
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() with add_rows writes the extra rows block", {
+  skip_if_not_installed("openxlsx2")
+  ar <- data.frame(label = "Controls", "(1)" = "Yes", check.names = FALSE)
+  tab <- regtab(list("(1)" = lm_basic), add_rows = ar)
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp))
+  expect_true(file.exists(tmp))
+})
+
+test_that("to_excel() raw=TRUE writes numeric SE to file", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic))
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  expect_no_error(to_excel(tab, file = tmp, raw = TRUE))
+  expect_true(file.exists(tmp))
+})

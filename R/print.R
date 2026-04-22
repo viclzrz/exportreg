@@ -32,10 +32,20 @@ print.regtab_table <- function(x, ...) {
     display_rows <- c(display_rows, list(c(tdisp, row_vals)))
 
     if (!is_hdr) {
+      se_fmt_choice <- if (!is.null(x$se_format)) x$se_format else "se"
       se_vals <- vapply(mn, function(mod) {
         r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
         if (nrow(r) == 0L) return("")
-        r$se_fmt[[1L]]
+        switch(se_fmt_choice,
+          "se"     = r$se_fmt[[1L]],
+          "tstat"  = {
+            if (is.na(r$estimate[[1L]]) || is.na(r$std.error[[1L]]) ||
+                r$std.error[[1L]] == 0) ""
+            else format_bracket(abs(r$estimate[[1L]] / r$std.error[[1L]]), x$digits)
+          },
+          "pvalue" = format_bracket(r$p.value[[1L]], x$digits),
+          r$se_fmt[[1L]]
+        )
       }, character(1L))
       display_rows <- c(display_rows, list(c("", se_vals)))
     }

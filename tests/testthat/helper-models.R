@@ -47,6 +47,22 @@ make_fixest_models <- function() {
     feols_no_fe = fixest::feols(
       y ~ x1 + x2,
       data = panel_data
-    )
+    ),
+    feols_clustered = fixest::feols(
+      y ~ x1 + x2 | firm_id,
+      data = panel_data,
+      cluster = ~firm_id
+    ),
+    feols_iv = {
+      # Synthetic IV dataset: z is a strong instrument for x_endog
+      set.seed(42)
+      n <- 200
+      z       <- rnorm(n)
+      u       <- rnorm(n)
+      x_endog <- 0.8 * z + 0.2 * u
+      y_iv    <- 1 + 2 * x_endog + u
+      iv_df   <- data.frame(y = y_iv, x = x_endog, z = z)
+      fixest::feols(y ~ 1 | x ~ z, data = iv_df)
+    }
   )
 }

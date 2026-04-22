@@ -27,6 +27,10 @@
 #' @param panels Named list of `regtab_table` objects for multi-panel tables.
 #'   All panels must have identical `model_names`. When supplied, `models` is
 #'   ignored.
+#' @param se_format Character scalar controlling what appears in the second row
+#'   under each coefficient. `"se"` (default) shows standard errors in
+#'   parentheses; `"tstat"` shows absolute t-statistics in brackets; `"pvalue"`
+#'   shows p-values in brackets.
 #'
 #' @return An object of class `regtab_table`.
 #'
@@ -50,7 +54,8 @@ regtab <- function(
     stars         = c(0.1, 0.05, 0.01),
     digits        = 3L,
     col_groups    = NULL,
-    panels        = NULL
+    panels        = NULL,
+    se_format     = "se"
 ) {
   # --- panels mode: assemble pre-built regtab_table objects vertically ------
   if (!is.null(panels)) {
@@ -58,6 +63,8 @@ regtab <- function(
   }
 
   # --- Validate inputs -------------------------------------------------------
+  se_format <- match.arg(se_format, c("se", "tstat", "pvalue"))
+
   if (!is.list(models) || is.null(names(models))) {
     stop("exportreg: `models` must be a named list.", call. = FALSE)
   }
@@ -92,6 +99,13 @@ regtab <- function(
   fe_data   <- build_fe_data(tidy_list, model_names, fe_labels)
   stat_data <- build_stat_data(tidy_list, model_names, digits)
 
+  # --- Build se_type vector (one label per model) ----------------------------
+  se_type <- vapply(model_names, function(mod) {
+    st <- tidy_list[[mod]]$se_type
+    if (is.null(st) || is.na(st)) "IID" else st
+  }, character(1L))
+  names(se_type) <- model_names
+
   # --- Return regtab_table ---------------------------------------------------
   structure(
     list(
@@ -103,6 +117,8 @@ regtab <- function(
       col_groups  = col_groups,
       digits      = digits,
       stars       = stars,
+      se_format   = se_format,
+      se_type     = se_type,
       call        = match.call()
     ),
     class = "regtab_table"
@@ -176,6 +192,8 @@ assemble_panels <- function(panels, col_groups) {
       col_groups  = col_groups,
       digits      = panels[[1L]]$digits,
       stars       = panels[[1L]]$stars,
+      se_format   = panels[[1L]]$se_format,
+      se_type     = panels[[1L]]$se_type,
       call        = match.call()
     ),
     class = "regtab_table"

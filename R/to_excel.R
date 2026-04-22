@@ -149,16 +149,36 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE,
     }
 
     if (!is_hdr) {
+      se_fmt_choice <- x$se_format %||% "se"
       se_vals <- c(list(NULL), lapply(mn, function(mod) {
         r <- cd[cd$term_display == tdisp & cd$model == mod, , drop = FALSE]
         if (nrow(r) == 0L) return(NULL)
-        if (raw) {
-          if (is.na(r$std.error[[1L]])) NULL else r$std.error[[1L]]
-        } else if (digits_override && !is.na(r$std.error[[1L]])) {
-          format_se(r$std.error[[1L]], d)
-        } else {
-          if (r$se_fmt[[1L]] == "") NULL else r$se_fmt[[1L]]
-        }
+        val <- switch(se_fmt_choice,
+          "se" = {
+            if (raw) {
+              if (is.na(r$std.error[[1L]])) NULL else r$std.error[[1L]]
+            } else if (digits_override && !is.na(r$std.error[[1L]])) {
+              format_se(r$std.error[[1L]], d)
+            } else {
+              if (r$se_fmt[[1L]] == "") NULL else r$se_fmt[[1L]]
+            }
+          },
+          "tstat" = {
+            if (is.na(r$estimate[[1L]]) || is.na(r$std.error[[1L]]) ||
+                r$std.error[[1L]] == 0) NULL
+            else if (raw) abs(r$estimate[[1L]] / r$std.error[[1L]])
+            else format_bracket(abs(r$estimate[[1L]] / r$std.error[[1L]]), d)
+          },
+          "pvalue" = {
+            if (is.na(r$p.value[[1L]])) NULL
+            else if (raw) r$p.value[[1L]]
+            else format_bracket(r$p.value[[1L]], d)
+          },
+          {
+            if (r$se_fmt[[1L]] == "") NULL else r$se_fmt[[1L]]
+          }
+        )
+        if (is.null(val) || identical(val, "")) NULL else val
       }))
       write_row(se_vals)
     }
@@ -228,7 +248,9 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE,
   }
 
   # --- Significance note -------------------------------------------------------
-  note_str  <- "Note: * p<0.1, ** p<0.05, *** p<0.01"
+  se_type_val <- x$se_type %||% stats::setNames(rep("IID", length(mn)), mn)
+  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se", latex = FALSE)
+  note_str    <- paste0("Note: *** p<0.01, ** p<0.05, * p<0.1. ", se_note_str)
   note_dims <- openxlsx2::wb_dims(rows = current_row, cols = seq_len(n_cols))
   wb <- openxlsx2::wb_add_data(
     wb, sheet = sheet,
