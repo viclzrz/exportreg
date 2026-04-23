@@ -323,6 +323,87 @@ test_that("format_bracket() formats correctly and handles NA", {
 })
 
 # ---------------------------------------------------------------------------
+# build_se_note() — bracket label appears exactly once in mixed SE tables
+# ---------------------------------------------------------------------------
+
+test_that("build_se_note() mixed SE + tstat: bracket label once at end, not per group", {
+  se_type <- c("(1)" = "IID", "(2)" = "Clustered (firm_id)", "(3)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(se_type, "tstat", latex = FALSE)
+  # Bracket label appears exactly once
+  expect_equal(lengths(regmatches(result, gregexpr("t-statistics in brackets",
+                                                    result, fixed = TRUE))), 1L)
+  # Appears at the end, after the semicolon-separated group list
+  expect_true(grepl(";", result, fixed = TRUE))
+  expect_true(endsWith(result, "t-statistics in brackets"))
+  # Column labels present for each group
+  expect_true(grepl("(1)", result, fixed = TRUE))
+  expect_true(grepl("(2)", result, fixed = TRUE))
+})
+
+test_that("build_se_note() mixed SE + pvalue: bracket label once at end, not per group", {
+  se_type <- c("(1)" = "IID", "(2)" = "Clustered (x)")
+  result  <- exportreg:::build_se_note(se_type, "pvalue", latex = FALSE)
+  expect_equal(lengths(regmatches(result, gregexpr("p-values in brackets",
+                                                    result, fixed = TRUE))), 1L)
+  expect_true(grepl(";", result, fixed = TRUE))
+  expect_true(endsWith(result, "p-values in brackets"))
+})
+
+test_that("build_se_note() mixed SE + tstat, LaTeX: bracket label once at end", {
+  se_type <- c("(1) OLS" = "IID", "(2) FE" = "Clustered (firm_id)",
+               "(3) IV"  = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "tstat",
+    cluster_labels = c(firm_id = "Firm"),
+    latex = TRUE
+  )
+  # Exactly one occurrence of the LaTeX bracket label
+  expect_equal(lengths(regmatches(result,
+    gregexpr("$t$-statistics in brackets", result, fixed = TRUE))), 1L)
+  # SE descriptions present without bracket label embedded
+  expect_true(grepl("Standard errors in parentheses", result, fixed = TRUE))
+  expect_true(grepl("Standard errors clustered at the Firm level", result,
+                    fixed = TRUE))
+  # Column labels present
+  expect_true(grepl("(1) OLS", result, fixed = TRUE))
+  expect_true(grepl("(2) FE",  result, fixed = TRUE))
+  # Groups separated by semicolon, bracket label at end
+  expect_true(grepl(";", result, fixed = TRUE))
+  expect_true(endsWith(result, "$t$-statistics in brackets"))
+})
+
+test_that("build_se_note() single SE + tstat: unchanged behaviour (bracket inline)", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "tstat",
+    cluster_labels = c(firm_id = "Firm"),
+    latex = TRUE
+  )
+  # Still a single-sentence result with inline bracket label
+  expect_true(grepl("Firm level. $t$-statistics in brackets", result,
+                    fixed = TRUE))
+  # No semicolons (only one group)
+  expect_false(grepl(";", result, fixed = TRUE))
+})
+
+test_that("to_latex() note has exactly one bracket label for mixed SE tstat table", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+
+  tab <- regtab(
+    list("OLS" = lm_basic, "FE" = mods$feols_clustered),
+    se_format      = "tstat",
+    cluster_labels = c(firm_id = "Firm")
+  )
+  # to_latex() returns a character vector (one element per line); count
+  # how many lines contain the bracket label — must be exactly one
+  latex_lines <- to_latex(tab)
+  n_hits <- sum(grepl("$t$-statistics in brackets", latex_lines, fixed = TRUE))
+  expect_equal(n_hits, 1L)
+})
+
+# ---------------------------------------------------------------------------
 # depvar_names slot
 # ---------------------------------------------------------------------------
 

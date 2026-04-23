@@ -148,9 +148,63 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
     }
   }
 
+  # Return the bare SE-type description (no format suffix) for one raw
+  # se_type string.  Used to build per-group labels in mixed-SE tables.
+  # IID always yields "Standard errors in parentheses" as its group label
+  # because there is no more informative base description for IID.
+  make_se_base <- function(s) {
+    s_lower <- tolower(s)
+
+    if (grepl("iid", s_lower)) {
+      "Standard errors in parentheses"
+
+    } else if (grepl("hetero|hc[0-9]?", s_lower)) {
+      base <- "Heteroskedasticity-robust standard errors"
+      if (se_format == "se") paste(base, "in parentheses") else base
+
+    } else if (grepl("two.way|twoway", s_lower)) {
+      vars <- extract_vars(s)
+      base <- if (length(vars) < 2L) {
+        "Two-way clustered standard errors"
+      } else {
+        last        <- vars[length(vars)]
+        others      <- vars[-length(vars)]
+        cluster_str <- paste0(paste(others, collapse = ", "), " and ", last)
+        paste0("Standard errors clustered at the ", cluster_str, " levels")
+      }
+      if (se_format == "se") paste(base, "in parentheses") else base
+
+    } else if (grepl("cluster", s_lower)) {
+      vars <- extract_vars(s)
+      base <- if (length(vars) == 0L) {
+        "Clustered standard errors"
+      } else if (length(vars) == 1L) {
+        paste0("Standard errors clustered at the ", vars, " level")
+      } else {
+        last        <- vars[length(vars)]
+        others      <- vars[-length(vars)]
+        cluster_str <- paste0(paste(others, collapse = ", "), " and ", last)
+        paste0("Standard errors clustered at the ", cluster_str, " levels")
+      }
+      if (se_format == "se") paste(base, "in parentheses") else base
+
+    } else if (grepl("nw|newey", s_lower)) {
+      base <- "Newey-West standard errors"
+      if (se_format == "se") paste(base, "in parentheses") else base
+
+    } else if (grepl("conley", s_lower)) {
+      base <- "Conley standard errors"
+      if (se_format == "se") paste(base, "in parentheses") else base
+
+    } else {
+      base <- "Standard errors"
+      if (se_format == "se") paste(base, "in parentheses") else base
+    }
+  }
+
   # Build a human-readable sentence for one raw se_type value.
-  # The raw string is used only for family detection; display text is
-  # constructed from the resolved variable labels.
+  # Used for the uniform (single SE type) case where the bracket label
+  # is integrated into the sentence directly via attach_format().
   make_se_display <- function(s) {
     s_lower <- tolower(s)
 
@@ -204,8 +258,11 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
   model_names  <- names(se_type)
 
   if (length(unique_types) == 1L) {
+    # Single SE type: existing behaviour — bracket label integrated inline.
     make_se_display(unique_types[[1L]])
   } else {
+    # Mixed SE types: list each group's SE description, then append the
+    # bracket label ONCE at the end so it is never repeated per group.
     parts <- character(0L)
     seen  <- character(0L)
     for (tp in unname(se_type)) {
@@ -213,9 +270,13 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
       seen <- c(seen, tp)
       cols    <- model_names[se_type == tp]
       col_str <- paste0("(", paste(cols, collapse = ", "), ")")
-      parts   <- c(parts, paste0(make_se_display(tp), " ", col_str))
+      parts   <- c(parts, paste0(make_se_base(tp), " ", col_str))
     }
-    paste(parts, collapse = "; ")
+    result <- paste(parts, collapse = "; ")
+    if (!is.null(bracket_label)) {
+      result <- paste0(result, ". ", bracket_label)
+    }
+    result
   }
 }
 
