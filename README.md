@@ -75,8 +75,8 @@ to_latex(tab)
 Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
 (Intercept) & -0.180 &  &  \\
  & (0.212) &  &  \\
-Education & 0.002 & 0.007 &  \\
- & (0.017) & (0.017) &  \\
+Education & 0.002 & 0.007 & -0.968 \\
+ & (0.017) & (0.017) & (2.611) \\
 Experience & 0.008 & 0.008 & 0.027 \\
  & (0.005) & (0.005) & (0.052) \\
 \midrule
@@ -85,6 +85,7 @@ Clusters &  & 50 & 50 \\
 $R^{2}$ & 0.005 & 0.087 & 0.089 \\
 Within $R^{2}$ &  & 0.006 & 0.008 \\
 RMSE & 0.971 & 0.928 & 2.578 \\
+KP $F$-stat &  &  & 0.190 \\
 \midrule
 Firm & No & Yes & Yes \\
 \bottomrule
@@ -127,8 +128,8 @@ to_latex(tab_t)
 Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
 (Intercept) & -0.180 &  &  \\
  & [0.849] &  &  \\
-Education & 0.002 & 0.007 &  \\
- & [0.134] & [0.423] &  \\
+Education & 0.002 & 0.007 & -0.968 \\
+ & [0.134] & [0.423] & [0.370] \\
 Experience & 0.008 & 0.008 & 0.027 \\
  & [1.635] & [1.494] & [0.508] \\
 \midrule
@@ -137,6 +138,7 @@ Clusters &  & 50 & 50 \\
 $R^{2}$ & 0.005 & 0.087 & 0.089 \\
 Within $R^{2}$ &  & 0.006 & 0.008 \\
 RMSE & 0.971 & 0.928 & 2.578 \\
+KP $F$-stat &  &  & 0.190 \\
 \midrule
 Firm & No & Yes & Yes \\
 \bottomrule
