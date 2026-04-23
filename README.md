@@ -32,15 +32,19 @@ dat <- data.frame(
   firm_id   = sample(1:20, n, replace = TRUE)
 )
 
-m1 <- feols(log_wage ~ educ + exper          | firm_id, data = dat)
-m2 <- feols(log_wage ~ educ + exper + female | firm_id, data = dat)
+m1 <- lm(log_wage ~ educ + exper,                    data = dat)
+m2 <- feols(log_wage ~ educ + exper          | firm_id, data = dat)
+m3 <- feols(log_wage ~ educ + exper + female | firm_id, data = dat)
 ```
 
 ### Build the regression table
 
+Mix `lm` and `feols` objects freely — `regtab()` dispatches to the right
+extractor for each model class.
+
 ``` r
 tab <- regtab(
-  models    = list("(1)" = m1, "(2)" = m2),
+  models    = list("(1) OLS" = m1, "(2) FE" = m2, "(3) FE" = m3),
   coef_map  = c(
     educ   = "Years of education",
     exper  = "Experience (years)",
@@ -54,22 +58,24 @@ tab <- regtab(
 
 ``` r
 print(tab)
-#>                     (1)       (2)      
-#> -------------------------------------- 
-#> Dep. var.           log_wage  log_wage 
-#> Years of education  -0.014    -0.014   
-#>                     (0.010)   (0.010)  
-#> Experience (years)  -0.003    -0.004   
-#>                     (0.004)   (0.004)  
-#> Female                        -0.042   
-#>                               (0.075)  
-#> -------------------------------------- 
-#> N                   200       200      
-#> R2                  0.099     0.100    
-#> Within R2           0.014     0.016    
-#> RMSE                0.461     0.461    
-#> -------------------------------------- 
-#> Firm FE             Yes       Yes      
+#>                     (1) OLS   (2) FE    (3) FE   
+#> ------------------------------------------------ 
+#> Dep. var.           log_wage  log_wage  log_wage 
+#> (Intercept)         3.032***                     
+#>                     (0.155)                      
+#> Years of education  -0.015    -0.014    -0.014   
+#>                     (0.009)   (0.010)   (0.010)  
+#> Experience (years)  -0.002    -0.003    -0.004   
+#>                     (0.004)   (0.004)   (0.004)  
+#> Female                                  -0.042   
+#>                                         (0.075)  
+#> ------------------------------------------------ 
+#> N                   200       200       200      
+#> R2                  0.014     0.099     0.100    
+#> Within R2                     0.014     0.016    
+#> RMSE                0.486     0.461     0.461    
+#> ------------------------------------------------ 
+#> Firm FE             No        Yes       Yes      
 #> 
 #> Note: * p<0.1, ** p<0.05, *** p<0.01
 ```
@@ -78,26 +84,28 @@ print(tab)
 
 ``` r
 to_latex(tab)
-#> \begin{tabular}{lcc}
+#> \begin{tabular}{lccc}
 #> \toprule
-#>  & (1) & (2) \\
+#>  & (1) OLS & (2) FE & (3) FE \\
 #> \midrule
-#> Dep.\ var. & log\_wage & log\_wage \\
-#> Years of education & -0.014 & -0.014 \\
-#>  & (0.010) & (0.010) \\
-#> Experience (years) & -0.003 & -0.004 \\
-#>  & (0.004) & (0.004) \\
-#> Female &  & -0.042 \\
-#>  &  & (0.075) \\
+#> Dep.\ var. & log\_wage & log\_wage & log\_wage \\
+#> (Intercept) & 3.032$^{***}$ &  &  \\
+#>  & (0.155) &  &  \\
+#> Years of education & -0.015 & -0.014 & -0.014 \\
+#>  & (0.009) & (0.010) & (0.010) \\
+#> Experience (years) & -0.002 & -0.003 & -0.004 \\
+#>  & (0.004) & (0.004) & (0.004) \\
+#> Female &  &  & -0.042 \\
+#>  &  &  & (0.075) \\
 #> \midrule
-#> $N$ & 200 & 200 \\
-#> $R^{2}$ & 0.099 & 0.100 \\
-#> Within $R^{2}$ & 0.014 & 0.016 \\
-#> RMSE & 0.461 & 0.461 \\
+#> $N$ & 200 & 200 & 200 \\
+#> $R^{2}$ & 0.014 & 0.099 & 0.100 \\
+#> Within $R^{2}$ &  & 0.014 & 0.016 \\
+#> RMSE & 0.486 & 0.461 & 0.461 \\
 #> \midrule
-#> Firm FE & Yes & Yes \\
+#> Firm FE & No & Yes & Yes \\
 #> \bottomrule
-#> \multicolumn{3}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. SE in parentheses. SE: IID} \\
+#> \multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. SE in parentheses. SE: IID} \\
 #> \end{tabular}
 ```
 

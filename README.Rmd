@@ -44,15 +44,19 @@ dat <- data.frame(
   firm_id   = sample(1:20, n, replace = TRUE)
 )
 
-m1 <- feols(log_wage ~ educ + exper          | firm_id, data = dat)
-m2 <- feols(log_wage ~ educ + exper + female | firm_id, data = dat)
+m1 <- lm(log_wage ~ educ + exper,                    data = dat)
+m2 <- feols(log_wage ~ educ + exper          | firm_id, data = dat)
+m3 <- feols(log_wage ~ educ + exper + female | firm_id, data = dat)
 ```
 
 ### Build the regression table
 
+Mix `lm` and `feols` objects freely — `regtab()` dispatches to the right
+extractor for each model class.
+
 ```{r regtab}
 tab <- regtab(
-  models    = list("(1)" = m1, "(2)" = m2),
+  models    = list("(1) OLS" = m1, "(2) FE" = m2, "(3) FE" = m3),
   coef_map  = c(
     educ   = "Years of education",
     exper  = "Experience (years)",
