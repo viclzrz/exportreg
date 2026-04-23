@@ -186,7 +186,10 @@ to_latex <- function(x, file = NULL, format = "fragment", note = NULL,
   # --- Significance note -------------------------------------------------------
   stars_note  <- "*** $p<0.01$, ** $p<0.05$, * $p<0.1$"
   se_type_val <- x$se_type %||% stats::setNames(rep("IID", length(mn)), mn)
-  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se", latex = TRUE)
+  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se",
+                               fe_labels      = x$fe_labels,
+                               cluster_labels = x$cluster_labels,
+                               latex          = TRUE)
   note_text <- paste0(stars_note, ". ", se_note_str)
   if (!is.null(note) && nchar(note) > 0L) {
     note_text <- paste0(note_text, ". ", note)

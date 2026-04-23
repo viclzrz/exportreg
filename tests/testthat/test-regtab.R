@@ -4,7 +4,8 @@ test_that("regtab() returns a regtab_table with correct structure", {
   expect_s3_class(tab, "regtab_table")
   expect_named(tab, c("coef_data", "fe_data", "add_rows", "stat_data",
                        "model_names", "col_groups", "digits", "stars",
-                       "se_format", "se_type", "depvar_names", "call"))
+                       "se_format", "se_type", "fe_labels", "cluster_labels",
+                       "depvar_names", "call"))
   expect_equal(tab$model_names, c("(1)", "(2)"))
 })
 
@@ -200,6 +201,73 @@ test_that("build_se_note() mixed types groups by type with column labels", {
   expect_true(grepl("Clustered", result))
   expect_true(grepl("\\(1\\)", result))
   expect_true(grepl("\\(2\\)", result))
+})
+
+test_that("build_se_note() cluster_labels provided — used directly", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "se",
+    cluster_labels = c(firm_id = "Firm"),
+    latex = FALSE
+  )
+  expect_true(grepl("Clustered (Firm)", result, fixed = TRUE))
+  expect_false(grepl("firm_id", result, fixed = TRUE))
+})
+
+test_that("build_se_note() cluster_labels NULL, variable in fe_labels — fe_labels used", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "se",
+    fe_labels = c(firm_id = "Firm FE"),
+    latex = FALSE
+  )
+  expect_true(grepl("Clustered (Firm FE)", result, fixed = TRUE))
+  expect_false(grepl("firm_id", result, fixed = TRUE))
+})
+
+test_that("build_se_note() cluster_labels NULL, fe_labels NULL — raw name used", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
+  expect_true(grepl("Clustered (firm_id)", result, fixed = TRUE))
+})
+
+test_that("build_se_note() twoway: one in cluster_labels, one falls back to fe_labels", {
+  se_type <- c("(1)" = "Two-ways (firm_id & worker_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "se",
+    fe_labels      = c(worker_id = "Worker FE"),
+    cluster_labels = c(firm_id   = "Firm"),
+    latex = FALSE
+  )
+  expect_true(grepl("Firm",      result, fixed = TRUE))
+  expect_true(grepl("Worker FE", result, fixed = TRUE))
+  expect_false(grepl("firm_id",   result, fixed = TRUE))
+  expect_false(grepl("worker_id", result, fixed = TRUE))
+})
+
+test_that("build_se_note() twoway: one in fe_labels, one falls back to raw name", {
+  se_type <- c("(1)" = "Two-ways (firm_id & worker_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "se",
+    fe_labels = c(firm_id = "Firm FE"),
+    latex = FALSE
+  )
+  expect_true(grepl("Firm FE",   result, fixed = TRUE))
+  expect_true(grepl("worker_id", result, fixed = TRUE))
+  expect_false(grepl("firm_id",  result, fixed = TRUE))
+})
+
+test_that("build_se_note() cluster_labels overrides fe_labels when both present", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "se",
+    fe_labels      = c(firm_id = "Firm FE"),
+    cluster_labels = c(firm_id = "Firm (cluster)"),
+    latex = FALSE
+  )
+  expect_true(grepl("Firm (cluster)", result, fixed = TRUE))
+  expect_false(grepl("Firm FE", result, fixed = TRUE))
+  expect_false(grepl("firm_id", result, fixed = TRUE))
 })
 
 test_that("format_bracket() formats correctly and handles NA", {

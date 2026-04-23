@@ -84,10 +84,15 @@ format_bracket <- function(x, digits) {
 #'
 #' @param se_type named character vector; names are model labels
 #' @param se_format character scalar: "se", "tstat", or "pvalue"
+#' @param fe_labels named character vector or NULL. Fallback lookup for cluster
+#'   variable names not found in \code{cluster_labels}.
+#' @param cluster_labels named character vector or NULL. Highest-priority lookup
+#'   for cluster variable names embedded in se_type strings.
 #' @param latex logical: whether to use math-mode markup
 #' @return character scalar
 #' @noRd
-build_se_note <- function(se_type, se_format, latex = FALSE) {
+build_se_note <- function(se_type, se_format, fe_labels = NULL,
+                          cluster_labels = NULL, latex = FALSE) {
   bracket_label <- switch(se_format,
     "se"     = "SE in parentheses",
     "tstat"  = if (latex) "$t$-statistics in brackets"
@@ -96,11 +101,40 @@ build_se_note <- function(se_type, se_format, latex = FALSE) {
                else       "p-values in brackets"
   )
 
+  # Resolve a single cluster variable name using priority order:
+  # 1. cluster_labels, 2. fe_labels, 3. raw name.
+  # Then substitute resolved names back into the se_type display string.
+  map_se_label <- function(s) {
+    if ((is.null(fe_labels) && is.null(cluster_labels)) ||
+        !grepl("(", s, fixed = TRUE)) return(s)
+    m <- regexpr("\\([^)]+\\)", s, perl = TRUE)
+    if (m == -1L) return(s)
+    inner <- regmatches(s, m)
+    inner_text <- substring(inner, 2L, nchar(inner) - 1L)
+    sep_raw  <- if (grepl("&", inner_text, fixed = TRUE)) " & "
+                else if (grepl("+", inner_text, fixed = TRUE)) " + "
+                else ", "
+    split_pat <- if (grepl("&", inner_text, fixed = TRUE)) "&"
+                 else if (grepl("+", inner_text, fixed = TRUE)) "+"
+                 else ","
+    vars   <- trimws(strsplit(inner_text, split_pat, fixed = TRUE)[[1L]])
+    mapped <- vapply(vars, function(v) {
+      if (!is.null(cluster_labels) && v %in% names(cluster_labels))
+        cluster_labels[[v]]
+      else if (!is.null(fe_labels) && v %in% names(fe_labels))
+        fe_labels[[v]]
+      else
+        v
+    }, character(1L))
+    new_inner <- paste(mapped, collapse = sep_raw)
+    sub("\\([^)]+\\)", paste0("(", new_inner, ")"), s, perl = FALSE)
+  }
+
   unique_types <- unique(unname(se_type))
   model_names  <- names(se_type)
 
   se_type_str <- if (length(unique_types) == 1L) {
-    unique_types[[1L]]
+    map_se_label(unique_types[[1L]])
   } else {
     parts <- character(0L)
     seen  <- character(0L)
@@ -109,7 +143,7 @@ build_se_note <- function(se_type, se_format, latex = FALSE) {
       seen <- c(seen, tp)
       cols    <- model_names[se_type == tp]
       col_str <- paste0("(", paste(cols, collapse = ", "), ")")
-      parts   <- c(parts, paste0(tp, " ", col_str))
+      parts   <- c(parts, paste0(map_se_label(tp), " ", col_str))
     }
     paste(parts, collapse = "; ")
   }

@@ -35,6 +35,11 @@
 #'   variable strings to display labels,
 #'   e.g. `c("log(wage)" = "Log Wage")`. `NULL` (default) uses the raw
 #'   extracted string.
+#' @param cluster_labels Named character vector mapping raw cluster variable
+#'   names to display labels for the SE note,
+#'   e.g. `c("firm_id" = "Firm", "worker_id" = "Worker")`. Takes priority over
+#'   `fe_labels` when a variable appears in both. `NULL` (default) falls back
+#'   to `fe_labels`, then to the raw variable name.
 #'
 #' @return An object of class `regtab_table`.
 #'
@@ -49,18 +54,19 @@
 #' @export
 regtab <- function(
     models,
-    keep          = NULL,
-    drop          = NULL,
-    coef_map      = NULL,
-    factor_labels = NULL,
-    add_rows      = NULL,
-    fe_labels     = NULL,
-    stars         = c(0.1, 0.05, 0.01),
-    digits        = 3L,
-    col_groups    = NULL,
-    panels        = NULL,
-    se_format     = "se",
-    depvar_labels = NULL
+    keep           = NULL,
+    drop           = NULL,
+    coef_map       = NULL,
+    factor_labels  = NULL,
+    add_rows       = NULL,
+    fe_labels      = NULL,
+    stars          = c(0.1, 0.05, 0.01),
+    digits         = 3L,
+    col_groups     = NULL,
+    panels         = NULL,
+    se_format      = "se",
+    depvar_labels  = NULL,
+    cluster_labels = NULL
 ) {
   # --- panels mode: assemble pre-built regtab_table objects vertically ------
   if (!is.null(panels)) {
@@ -125,18 +131,20 @@ regtab <- function(
   # --- Return regtab_table ---------------------------------------------------
   structure(
     list(
-      coef_data    = coef_data,
-      fe_data      = fe_data,
-      add_rows     = add_rows,
-      stat_data    = stat_data,
-      model_names  = model_names,
-      col_groups   = col_groups,
-      digits       = digits,
-      stars        = stars,
-      se_format    = se_format,
-      se_type      = se_type,
-      depvar_names = depvar_names,
-      call         = match.call()
+      coef_data      = coef_data,
+      fe_data        = fe_data,
+      add_rows       = add_rows,
+      stat_data      = stat_data,
+      model_names    = model_names,
+      col_groups     = col_groups,
+      digits         = digits,
+      stars          = stars,
+      se_format      = se_format,
+      se_type        = se_type,
+      fe_labels      = fe_labels,
+      cluster_labels = cluster_labels,
+      depvar_names   = depvar_names,
+      call           = match.call()
     ),
     class = "regtab_table"
   )
@@ -201,18 +209,20 @@ assemble_panels <- function(panels, col_groups) {
 
   structure(
     list(
-      coef_data    = do.call(rbind, coef_blocks),
-      fe_data      = do.call(rbind, fe_blocks),
-      add_rows     = NULL,
-      stat_data    = do.call(rbind, stat_blocks),
-      model_names  = model_names,
-      col_groups   = col_groups,
-      digits       = panels[[1L]]$digits,
-      stars        = panels[[1L]]$stars,
-      se_format    = panels[[1L]]$se_format,
-      se_type      = panels[[1L]]$se_type,
-      depvar_names = panels[[1L]]$depvar_names,
-      call         = match.call()
+      coef_data      = do.call(rbind, coef_blocks),
+      fe_data        = do.call(rbind, fe_blocks),
+      add_rows       = NULL,
+      stat_data      = do.call(rbind, stat_blocks),
+      model_names    = model_names,
+      col_groups     = col_groups,
+      digits         = panels[[1L]]$digits,
+      stars          = panels[[1L]]$stars,
+      se_format      = panels[[1L]]$se_format,
+      se_type        = panels[[1L]]$se_type,
+      fe_labels      = panels[[1L]]$fe_labels,
+      cluster_labels = panels[[1L]]$cluster_labels,
+      depvar_names   = panels[[1L]]$depvar_names,
+      call           = match.call()
     ),
     class = "regtab_table"
   )

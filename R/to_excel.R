@@ -258,7 +258,10 @@ to_excel <- function(x, file, sheet = "Table 1", open = FALSE,
 
   # --- Significance note -------------------------------------------------------
   se_type_val <- x$se_type %||% stats::setNames(rep("IID", length(mn)), mn)
-  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se", latex = FALSE)
+  se_note_str <- build_se_note(se_type_val, x$se_format %||% "se",
+                               fe_labels      = x$fe_labels,
+                               cluster_labels = x$cluster_labels,
+                               latex          = FALSE)
   note_str    <- paste0("Note: *** p<0.01, ** p<0.05, * p<0.1. ", se_note_str)
   note_dims <- openxlsx2::wb_dims(rows = current_row, cols = seq_len(n_cols))
   wb <- openxlsx2::wb_add_data(
