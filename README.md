@@ -153,7 +153,7 @@ KP $F$-stat &  &  & 1629.321 \\
 \midrule
 Firm & No & Yes & Yes \\
 \bottomrule
-\multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. $t$-statistics in brackets ((1) OLS); Standard errors clustered at the Firm level. $t$-statistics in brackets ((2) FE, (3) IV)} \\
+\multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors in parentheses ((1) OLS); Standard errors clustered at the Firm level ((2) FE, (3) IV). $t$-statistics in brackets} \\
 \end{tabular} 
 ```
 
