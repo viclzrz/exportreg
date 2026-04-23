@@ -27,13 +27,24 @@ library(fixest)
 
 set.seed(42)
 n <- 500
-df <- data.frame(
-  wage       = exp(rnorm(n)),
-  educ       = sample(8:16, n, replace = TRUE),
-  exper      = sample(1:30, n, replace = TRUE),
-  firm_id    = sample(1:50, n, replace = TRUE),
-  instrument = rnorm(n)
+
+# Instrument correlated with education
+instrument <- rnorm(n)
+educ       <- round(12 + 2 * instrument + rnorm(n), 0)
+educ       <- pmax(6, pmin(20, educ))
+exper      <- sample(1:30, n, replace = TRUE)
+firm_id    <- sample(1:50,  n, replace = TRUE)
+
+# True wage equation
+firm_fe    <- rnorm(50)[firm_id]
+wage       <- exp(
+  0.08 * educ +
+  0.02 * exper +
+  firm_fe +
+  rnorm(n, sd = 0.3)
 )
+
+df <- data.frame(wage, educ, exper, firm_id, instrument)
 
 m1 <- lm(log(wage) ~ educ + exper,
          data = df)
@@ -73,19 +84,19 @@ to_latex(tab)
  & (1) OLS & (2) FE & (3) IV \\
 \midrule
 Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
-(Intercept) & -0.180 &  &  \\
- & (0.212) &  &  \\
-Education & 0.002 & 0.007 & -0.968 \\
- & (0.017) & (0.017) & (2.611) \\
-Experience & 0.008 & 0.008 & 0.027 \\
- & (0.005) & (0.005) & (0.052) \\
+(Intercept) & 0.425 &  &  \\
+ & (0.265) &  &  \\
+Education & 0.069$^{***}$ & 0.078$^{***}$ & 0.077$^{***}$ \\
+ & (0.021) & (0.006) & (0.008) \\
+Experience & 0.017$^{***}$ & 0.019$^{***}$ & 0.019$^{***}$ \\
+ & (0.005) & (0.002) & (0.002) \\
 \midrule
 $N$ & 500 & 500 & 500 \\
 Clusters &  & 50 & 50 \\
-$R^{2}$ & 0.005 & 0.087 & 0.089 \\
-Within $R^{2}$ &  & 0.006 & 0.008 \\
-RMSE & 0.971 & 0.928 & 2.578 \\
-KP $F$-stat &  &  & 0.190 \\
+$R^{2}$ & 0.043 & 0.929 & 0.924 \\
+Within $R^{2}$ &  & 0.403 & 0.354 \\
+RMSE & 1.047 & 0.284 & 0.284 \\
+KP $F$-stat &  &  & 1629.321 \\
 \midrule
 Firm & No & Yes & Yes \\
 \bottomrule
@@ -126,19 +137,19 @@ to_latex(tab_t)
  & (1) OLS & (2) FE & (3) IV \\
 \midrule
 Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
-(Intercept) & -0.180 &  &  \\
- & [0.849] &  &  \\
-Education & 0.002 & 0.007 & -0.968 \\
- & [0.134] & [0.423] & [0.370] \\
-Experience & 0.008 & 0.008 & 0.027 \\
- & [1.635] & [1.494] & [0.508] \\
+(Intercept) & 0.425 &  &  \\
+ & [1.602] &  &  \\
+Education & 0.069$^{***}$ & 0.078$^{***}$ & 0.077$^{***}$ \\
+ & [3.283] & [12.746] & [10.218] \\
+Experience & 0.017$^{***}$ & 0.019$^{***}$ & 0.019$^{***}$ \\
+ & [3.228] & [12.537] & [12.618] \\
 \midrule
 $N$ & 500 & 500 & 500 \\
 Clusters &  & 50 & 50 \\
-$R^{2}$ & 0.005 & 0.087 & 0.089 \\
-Within $R^{2}$ &  & 0.006 & 0.008 \\
-RMSE & 0.971 & 0.928 & 2.578 \\
-KP $F$-stat &  &  & 0.190 \\
+$R^{2}$ & 0.043 & 0.929 & 0.924 \\
+Within $R^{2}$ &  & 0.403 & 0.354 \\
+RMSE & 1.047 & 0.284 & 0.284 \\
+KP $F$-stat &  &  & 1629.321 \\
 \midrule
 Firm & No & Yes & Yes \\
 \bottomrule

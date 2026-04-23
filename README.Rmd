@@ -38,13 +38,24 @@ library(fixest)
 
 set.seed(42)
 n <- 500
-df <- data.frame(
-  wage       = exp(rnorm(n)),
-  educ       = sample(8:16, n, replace = TRUE),
-  exper      = sample(1:30, n, replace = TRUE),
-  firm_id    = sample(1:50, n, replace = TRUE),
-  instrument = rnorm(n)
+
+# Instrument correlated with education
+instrument <- rnorm(n)
+educ       <- round(12 + 2 * instrument + rnorm(n), 0)
+educ       <- pmax(6, pmin(20, educ))
+exper      <- sample(1:30, n, replace = TRUE)
+firm_id    <- sample(1:50,  n, replace = TRUE)
+
+# True wage equation
+firm_fe    <- rnorm(50)[firm_id]
+wage       <- exp(
+  0.08 * educ +
+  0.02 * exper +
+  firm_fe +
+  rnorm(n, sd = 0.3)
 )
+
+df <- data.frame(wage, educ, exper, firm_id, instrument)
 
 m1 <- lm(log(wage) ~ educ + exper,
          data = df)
