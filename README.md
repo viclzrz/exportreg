@@ -3,122 +3,161 @@
 
 # exportreg
 
-`exportreg` turns a named list of regression models into
-publication-ready tables for export to **Excel** and **LaTeX**, with
-first-class support for `fixest` models (`feols`, `fepois`, `feiv`).
+exportreg builds publication-ready regression tables for economists,
+with first-class fixest support and Excel and LaTeX as priority output
+formats.
 
 ## Installation
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("vicentelopez/exportreg")
+remotes::install_github("viclzrz/exportreg")
 ```
 
 ## Minimal example
 
-### Simulate data and fit models
+`regtab()` accepts a named list of model objects — mix `lm` and `feols`
+freely. The names become the column headers.
+
+### Data and models
 
 ``` r
 library(exportreg)
 library(fixest)
 
 set.seed(42)
-n <- 200
-dat <- data.frame(
-  log_wage  = rnorm(n, mean = 2.8, sd = 0.5),
-  educ      = sample(8:20, n, replace = TRUE),
-  exper     = sample(1:30, n, replace = TRUE),
-  female    = rbinom(n, 1, 0.45),
-  firm_id   = sample(1:20, n, replace = TRUE)
+n <- 500
+df <- data.frame(
+  wage       = exp(rnorm(n)),
+  educ       = sample(8:16, n, replace = TRUE),
+  exper      = sample(1:30, n, replace = TRUE),
+  firm_id    = sample(1:50, n, replace = TRUE),
+  instrument = rnorm(n)
 )
 
-m1 <- lm(log_wage ~ educ + exper,                    data = dat)
-m2 <- feols(log_wage ~ educ + exper          | firm_id, data = dat)
-m3 <- feols(log_wage ~ educ + exper + female | firm_id, data = dat)
+m1 <- lm(log(wage) ~ educ + exper,
+         data = df)
+m2 <- feols(log(wage) ~ educ + exper | firm_id,
+            data = df, cluster = ~firm_id)
+m3 <- feols(log(wage) ~ exper | firm_id |
+            educ ~ instrument,
+            data = df, cluster = ~firm_id)
 ```
 
-### Build the regression table
+### Example 1 — standard errors in parentheses
 
-Mix `lm` and `feols` objects freely — `regtab()` dispatches to the right
-extractor for each model class.
+`m1` uses IID standard errors; `m2` and `m3` are clustered at the firm
+level. `regtab()` detects both SE types and builds the note
+automatically. `coef_map` aligns the Education row across all three
+columns: OLS and FE report the coefficient as `educ`, the IV second
+stage as `fit_educ` — both map to the same display label.
 
 ``` r
 tab <- regtab(
-  models    = list("(1) OLS" = m1, "(2) FE" = m2, "(3) FE" = m3),
-  coef_map  = c(
-    educ   = "Years of education",
-    exper  = "Experience (years)",
-    female = "Female"
-  ),
-  fe_labels = c(firm_id = "Firm FE")
+  models         = list("(1) OLS" = m1,
+                        "(2) FE"  = m2,
+                        "(3) IV"  = m3),
+  fe_labels      = c("firm_id" = "Firm"),
+  cluster_labels = c("firm_id" = "Firm"),
+  depvar_labels  = c("log(wage)" = "ln(wage)"),
+  coef_map       = c("educ"     = "Education",
+                     "fit_educ" = "Education",
+                     "exper"    = "Experience")
 )
 ```
 
-### Console output
-
-``` r
-print(tab)
-#>                     (1) OLS   (2) FE    (3) FE   
-#> ------------------------------------------------ 
-#> Dep. var.           log_wage  log_wage  log_wage 
-#> (Intercept)         3.032***                     
-#>                     (0.155)                      
-#> Years of education  -0.015    -0.014    -0.014   
-#>                     (0.009)   (0.010)   (0.010)  
-#> Experience (years)  -0.002    -0.003    -0.004   
-#>                     (0.004)   (0.004)   (0.004)  
-#> Female                                  -0.042   
-#>                                         (0.075)  
-#> ------------------------------------------------ 
-#> N                   200       200       200      
-#> R2                  0.014     0.099     0.100    
-#> Within R2                     0.014     0.016    
-#> RMSE                0.486     0.461     0.461    
-#> ------------------------------------------------ 
-#> Firm FE             No        Yes       Yes      
-#> 
-#> Note: * p<0.1, ** p<0.05, *** p<0.01
-```
-
-### LaTeX output
-
 ``` r
 to_latex(tab)
-#> \begin{tabular}{lccc}
-#> \toprule
-#>  & (1) OLS & (2) FE & (3) FE \\
-#> \midrule
-#> Dep.\ var. & log\_wage & log\_wage & log\_wage \\
-#> (Intercept) & 3.032$^{***}$ &  &  \\
-#>  & (0.155) &  &  \\
-#> Years of education & -0.015 & -0.014 & -0.014 \\
-#>  & (0.009) & (0.010) & (0.010) \\
-#> Experience (years) & -0.002 & -0.003 & -0.004 \\
-#>  & (0.004) & (0.004) & (0.004) \\
-#> Female &  &  & -0.042 \\
-#>  &  &  & (0.075) \\
-#> \midrule
-#> $N$ & 200 & 200 & 200 \\
-#> $R^{2}$ & 0.014 & 0.099 & 0.100 \\
-#> Within $R^{2}$ &  & 0.014 & 0.016 \\
-#> RMSE & 0.486 & 0.461 & 0.461 \\
-#> \midrule
-#> Firm FE & No & Yes & Yes \\
-#> \bottomrule
-#> \multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. SE in parentheses. SE: IID} \\
-#> \end{tabular}
+\begin{tabular}{lccc}
+\toprule
+ & (1) OLS & (2) FE & (3) IV \\
+\midrule
+Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
+(Intercept) & -0.180 &  &  \\
+ & (0.212) &  &  \\
+Education & 0.002 & 0.007 &  \\
+ & (0.017) & (0.017) &  \\
+Experience & 0.008 & 0.008 & 0.027 \\
+ & (0.005) & (0.005) & (0.052) \\
+\midrule
+$N$ & 500 & 500 & 500 \\
+Clusters &  & 50 & 50 \\
+$R^{2}$ & 0.005 & 0.087 & 0.089 \\
+Within $R^{2}$ &  & 0.006 & 0.008 \\
+RMSE & 0.971 & 0.928 & 2.578 \\
+\midrule
+Firm & No & Yes & Yes \\
+\bottomrule
+\multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. Standard errors in parentheses ((1) OLS); Standard errors clustered at the Firm level in parentheses ((2) FE, (3) IV)} \\
+\end{tabular} 
 ```
 
-### Excel output
+The significance note reflects the mixed SE setup: column (1) uses IID
+standard errors, while columns (2) and (3) are clustered at the Firm
+level. The Firm FE row shows No / Yes / Yes, and column (3) includes a
+KP F-stat row from the first stage.
+
+### Example 2 — t-statistics in brackets
+
+Pass `se_format = "tstat"` to show absolute t-statistics in brackets
+instead of standard errors in parentheses. The note updates
+automatically.
 
 ``` r
-to_excel(tab, path = "table1.xlsx")
+tab_t <- regtab(
+  models         = list("(1) OLS" = m1,
+                        "(2) FE"  = m2,
+                        "(3) IV"  = m3),
+  fe_labels      = c("firm_id" = "Firm"),
+  cluster_labels = c("firm_id" = "Firm"),
+  depvar_labels  = c("log(wage)" = "ln(wage)"),
+  coef_map       = c("educ"     = "Education",
+                     "fit_educ" = "Education",
+                     "exper"    = "Experience"),
+  se_format      = "tstat"
+)
+```
+
+``` r
+to_latex(tab_t)
+\begin{tabular}{lccc}
+\toprule
+ & (1) OLS & (2) FE & (3) IV \\
+\midrule
+Dep.\ var. & ln(wage) & ln(wage) & ln(wage) \\
+(Intercept) & -0.180 &  &  \\
+ & [0.849] &  &  \\
+Education & 0.002 & 0.007 &  \\
+ & [0.134] & [0.423] &  \\
+Experience & 0.008 & 0.008 & 0.027 \\
+ & [1.635] & [1.494] & [0.508] \\
+\midrule
+$N$ & 500 & 500 & 500 \\
+Clusters &  & 50 & 50 \\
+$R^{2}$ & 0.005 & 0.087 & 0.089 \\
+Within $R^{2}$ &  & 0.006 & 0.008 \\
+RMSE & 0.971 & 0.928 & 2.578 \\
+\midrule
+Firm & No & Yes & Yes \\
+\bottomrule
+\multicolumn{4}{l}{\textit{Note:} *** $p<0.01$, ** $p<0.05$, * $p<0.1$. $t$-statistics in brackets ((1) OLS); Standard errors clustered at the Firm level. $t$-statistics in brackets ((2) FE, (3) IV)} \\
+\end{tabular} 
+```
+
+### Example 3 — Excel output
+
+`to_excel()` writes a formatted `.xlsx` file using `openxlsx2` (no Java
+required). Column widths are auto-fitted and headers are bolded.
+
+``` r
+to_excel(tab, file = "table1.xlsx")
+# to_excel(tab, file = "table1.xlsx", raw = TRUE)
 ```
 
 ## Full documentation
 
-See the vignette for a complete walkthrough of all features including
-`col_groups`, `add_rows`, `se_format`, factor variables, and IV models:
+For a full walkthrough including multi-panel tables and all available
+arguments, see the vignette:
 
 ``` r
 vignette("getting-started", package = "exportreg")
