@@ -273,6 +273,50 @@ test_that("build_se_note() cluster_labels overrides fe_labels when both present"
   expect_false(grepl("firm_id", result, fixed = TRUE))
 })
 
+# ---------------------------------------------------------------------------
+# build_se_note() — tstat/pvalue label resolution and separator fixes
+# ---------------------------------------------------------------------------
+
+test_that("build_se_note() tstat + cluster_labels: label applied, period separator, LaTeX", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "tstat",
+    cluster_labels = c(firm_id = "Firm"),
+    latex = TRUE
+  )
+  expect_true(grepl("Standard errors clustered at the Firm level", result, fixed = TRUE))
+  expect_true(grepl("$t$-statistics in brackets", result, fixed = TRUE))
+  expect_true(grepl("Firm level. $t$", result, fixed = TRUE))  # period separator
+  expect_false(grepl("firm_id", result, fixed = TRUE))
+  expect_false(grepl(";", result, fixed = TRUE))  # no semicolon separator
+})
+
+test_that("build_se_note() pvalue + cluster_labels: label applied, period separator, LaTeX", {
+  se_type <- c("(1)" = "Clustered (firm_id)")
+  result  <- exportreg:::build_se_note(
+    se_type, "pvalue",
+    cluster_labels = c(firm_id = "Firm"),
+    latex = TRUE
+  )
+  expect_true(grepl("Standard errors clustered at the Firm level", result, fixed = TRUE))
+  expect_true(grepl("$p$-values in brackets", result, fixed = TRUE))
+  expect_true(grepl("Firm level. $p$", result, fixed = TRUE))  # period separator
+  expect_false(grepl("firm_id", result, fixed = TRUE))
+  expect_false(grepl(";", result, fixed = TRUE))
+})
+
+test_that("build_se_note() tstat + IID: returns bracket note only, no SE prefix", {
+  se_type <- c("(1)" = "IID")
+  result  <- exportreg:::build_se_note(se_type, "tstat", latex = FALSE)
+  expect_equal(result, "t-statistics in brackets")
+})
+
+test_that("build_se_note() pvalue + IID: returns bracket note only, no SE prefix", {
+  se_type <- c("(1)" = "IID")
+  result  <- exportreg:::build_se_note(se_type, "pvalue", latex = FALSE)
+  expect_equal(result, "p-values in brackets")
+})
+
 test_that("format_bracket() formats correctly and handles NA", {
   expect_equal(exportreg:::format_bracket(0.456, 3L), "[0.456]")
   expect_equal(exportreg:::format_bracket(NA_real_, 3L), "")

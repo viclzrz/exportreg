@@ -228,3 +228,45 @@ test_that("to_excel() note does not contain 'SE:' or raw var names when cluster_
   expect_false(any(grepl("SE:", note_cells, fixed = TRUE)))
   expect_false(any(grepl("firm_id", note_cells, fixed = TRUE)))
 })
+
+# ---------------------------------------------------------------------------
+# to_excel() note — tstat/pvalue plain-text format regression tests
+# ---------------------------------------------------------------------------
+
+test_that("to_excel() tstat + cluster_labels: note uses plain-text bracket label with period separator", {
+  skip_if_not_installed("openxlsx2")
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tab <- regtab(
+    list("(1)" = mods$feols_clustered),
+    se_format      = "tstat",
+    cluster_labels = c("firm_id" = "Firm")
+  )
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  to_excel(tab, file = tmp)
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  all_cells <- unlist(lapply(dat, as.character))
+  note_cells <- all_cells[grepl("Note", all_cells, fixed = TRUE)]
+  expect_true(length(note_cells) > 0L)
+  expect_true(any(grepl("Standard errors clustered at the Firm level", note_cells, fixed = TRUE)))
+  expect_true(any(grepl("t-statistics in brackets", note_cells, fixed = TRUE)))
+  expect_false(any(grepl("firm_id", note_cells, fixed = TRUE)))
+  expect_false(any(grepl(";", note_cells, fixed = TRUE)))
+})
+
+test_that("to_excel() pvalue + IID: note contains plain-text bracket label only", {
+  skip_if_not_installed("openxlsx2")
+  tab <- regtab(list("(1)" = lm_basic), se_format = "pvalue")
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  to_excel(tab, file = tmp)
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  all_cells <- unlist(lapply(dat, as.character))
+  note_cells <- all_cells[grepl("Note", all_cells, fixed = TRUE)]
+  expect_true(length(note_cells) > 0L)
+  expect_true(any(grepl("p-values in brackets", note_cells, fixed = TRUE)))
+})

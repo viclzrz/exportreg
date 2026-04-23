@@ -123,14 +123,30 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
     vapply(vars, map_var, character(1L))
   }
 
-  # Suffix describing what appears in the cell's second row
-  cell_suffix <- switch(se_format,
-    "se"     = "in parentheses",
-    "tstat"  = if (latex) "; $t$-statistics in brackets"
-               else       "; t-statistics in brackets",
-    "pvalue" = if (latex) "; $p$-values in brackets"
-               else       "; p-values in brackets"
+  # Bracket label for tstat/pvalue formats (no separator prefix — assembled
+  # below with ". " so it reads as a new sentence)
+  bracket_label <- switch(se_format,
+    "tstat"  = if (latex) "$t$-statistics in brackets"
+               else       "t-statistics in brackets",
+    "pvalue" = if (latex) "$p$-values in brackets"
+               else       "p-values in brackets",
+    NULL
   )
+
+  # Attach the appropriate format suffix to a SE-description base string.
+  # For "se": integrates "in parentheses" directly into the base sentence.
+  # For "tstat"/"pvalue":
+  #   - IID (NULL base): return bracket_label alone (no SE prefix needed)
+  #   - Otherwise: append ". bracket_label" as a second sentence.
+  attach_format <- function(base) {
+    if (se_format == "se") {
+      paste(base, "in parentheses")
+    } else if (is.null(base)) {
+      bracket_label
+    } else {
+      paste0(base, ". ", bracket_label)
+    }
+  }
 
   # Build a human-readable sentence for one raw se_type value.
   # The raw string is used only for family detection; display text is
@@ -139,12 +155,12 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
     s_lower <- tolower(s)
 
     if (grepl("iid", s_lower)) {
+      # IID: for "se" use a full sentence; for tstat/pvalue, bracket only
       if (se_format == "se") "Standard errors in parentheses"
-      else paste0("Standard errors", cell_suffix)
+      else bracket_label
 
     } else if (grepl("hetero|hc[0-9]?", s_lower)) {
-      if (se_format == "se") "Heteroskedasticity-robust standard errors in parentheses"
-      else paste0("Heteroskedasticity-robust standard errors", cell_suffix)
+      attach_format("Heteroskedasticity-robust standard errors")
 
     } else if (grepl("two.way|twoway", s_lower)) {
       vars <- extract_vars(s)
@@ -156,8 +172,7 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
         cluster_str <- paste0(paste(others, collapse = ", "), " and ", last)
         paste0("Standard errors clustered at the ", cluster_str, " levels")
       }
-      if (se_format == "se") paste(base, "in parentheses")
-      else paste0(base, cell_suffix)
+      attach_format(base)
 
     } else if (grepl("cluster", s_lower)) {
       vars <- extract_vars(s)
@@ -171,21 +186,17 @@ build_se_note <- function(se_type, se_format, fe_labels = NULL,
         cluster_str <- paste0(paste(others, collapse = ", "), " and ", last)
         paste0("Standard errors clustered at the ", cluster_str, " levels")
       }
-      if (se_format == "se") paste(base, "in parentheses")
-      else paste0(base, cell_suffix)
+      attach_format(base)
 
     } else if (grepl("nw|newey", s_lower)) {
-      if (se_format == "se") "Newey-West standard errors in parentheses"
-      else paste0("Newey-West standard errors", cell_suffix)
+      attach_format("Newey-West standard errors")
 
     } else if (grepl("conley", s_lower)) {
-      if (se_format == "se") "Conley standard errors in parentheses"
-      else paste0("Conley standard errors", cell_suffix)
+      attach_format("Conley standard errors")
 
     } else {
       # Unknown family — generic fallback
-      if (se_format == "se") "Standard errors in parentheses"
-      else paste0("Standard errors", cell_suffix)
+      attach_format("Standard errors")
     }
   }
 
