@@ -358,6 +358,26 @@ build_coef_data <- function(tidy_list, model_names, ordered_terms,
 
   coef_data <- do.call(rbind, rows)
 
+  # Collapse (term_display, model) duplicates created when coef_map maps
+  # multiple raw terms to the same display label (e.g. "educ" and "fit_educ"
+  # both -> "Education").  For each pair, keep the row with a non-NA estimate;
+  # fall back to the first row when all are NA.  Also align row_order within
+  # each term_display group to its minimum so the merged row keeps its position.
+  td_mod_key <- paste(coef_data$term_display, coef_data$model, sep = "\x01")
+  if (anyDuplicated(td_mod_key)) {
+    for (td in unique(coef_data$term_display)) {
+      td_idx <- which(coef_data$term_display == td)
+      coef_data$row_order[td_idx] <- min(coef_data$row_order[td_idx])
+    }
+    keep_rows <- vapply(unique(td_mod_key), function(k) {
+      ii     <- which(td_mod_key == k)
+      non_na <- ii[!is.na(coef_data$estimate[ii])]
+      if (length(non_na) > 0L) non_na[[1L]] else ii[[1L]]
+    }, integer(1L))
+    coef_data <- coef_data[sort(keep_rows), , drop = FALSE]
+    rm(td_mod_key)   # no longer needed
+  }
+
   # Insert factor header rows when factor_labels is provided
   if (!is.null(factor_labels)) {
     header_rows <- vector("list", length(factor_labels) * length(model_names))

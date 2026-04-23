@@ -375,3 +375,94 @@ test_that("print.regtab_table() output contains depvar label", {
   expect_true(grepl("Dep\\. var\\.", combined))
   expect_true(grepl("\\by\\b", combined))
 })
+
+# ---------------------------------------------------------------------------
+# coef_map label collision — Bug fix: different raw terms -> same display label
+# ---------------------------------------------------------------------------
+
+test_that("coef_map: two terms mapping to same label keep both estimates per column", {
+  # m_x1: has term "x1"
+  # m_x2: has term "x2"
+  # coef_map maps both to "Var A"
+  # Expected: column (1) shows x1 estimate; column (2) shows x2 estimate; no blanks
+  m_x1 <- lm(y ~ x1,      data = panel_data)
+  m_x2 <- lm(y ~ x2,      data = panel_data)
+  tab <- regtab(
+    list("(1)" = m_x1, "(2)" = m_x2),
+    coef_map = c("x1" = "Var A", "x2" = "Var A")
+  )
+
+  # coef_data should have exactly one row per (display_label, model)
+  vara_rows <- tab$coef_data[tab$coef_data$term_display == "Var A", ]
+  expect_equal(nrow(vara_rows), 2L)  # one row per model, not four
+
+  # Column (1) should have non-NA estimate (from x1)
+  r1 <- vara_rows[vara_rows$model == "(1)", ]
+  expect_false(is.na(r1$estimate))
+  expect_equal(r1$term_raw, "x1")
+
+  # Column (2) should have non-NA estimate (from x2)
+  r2 <- vara_rows[vara_rows$model == "(2)", ]
+  expect_false(is.na(r2$estimate))
+  expect_equal(r2$term_raw, "x2")
+})
+
+test_that("coef_map: label collision — print output shows estimates in both columns", {
+  m_x1 <- lm(y ~ x1, data = panel_data)
+  m_x2 <- lm(y ~ x2, data = panel_data)
+  tab <- regtab(
+    list("(1)" = m_x1, "(2)" = m_x2),
+    coef_map = c("x1" = "Var A", "x2" = "Var A")
+  )
+  out <- paste(capture.output(print(tab)), collapse = "\n")
+  # "Var A" row appears exactly once in the output
+  expect_equal(length(gregexpr("Var A", out, fixed = TRUE)[[1L]]), 1L)
+})
+
+test_that("coef_map: IV fit_educ maps to same label as educ — IV column shows estimate", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+
+  m_ols <- lm(y ~ x1, data = panel_data)
+  tab <- regtab(
+    list("OLS" = m_ols, "IV" = mods$feols_iv_fe),
+    coef_map = c("x1" = "Endogenous", "fit_educ" = "Endogenous",
+                 "fit_x" = "Endogenous")
+  )
+
+  # The IV model contributes a fit_ term (fit_educ); that estimate should be
+  # non-NA in the IV column after label deduplication
+  endog_rows <- tab$coef_data[tab$coef_data$term_display == "Endogenous", ]
+  iv_row <- endog_rows[endog_rows$model == "IV", ]
+  if (nrow(iv_row) == 1L) {
+    expect_false(is.na(iv_row$estimate))
+  }
+})
+
+test_that("regtab() with README coef_map shows non-NA estimate in IV column", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+
+  m_fe <- fixest::feols(y ~ x1 | firm_id, data = panel_data)
+  tab <- regtab(
+    list("OLS" = lm_basic, "FE" = m_fe, "IV" = mods$feols_iv_fe),
+    coef_map = c("x1"       = "Regressor",
+                 "fit_educ" = "Regressor",
+                 "exper"    = "Experience")
+  )
+
+  # IV column: fit_educ -> "Regressor"; estimate must be non-NA
+  reg_rows <- tab$coef_data[tab$coef_data$term_display == "Regressor", ]
+  iv_row   <- reg_rows[reg_rows$model == "IV", ]
+  expect_equal(nrow(iv_row), 1L)
+  expect_false(is.na(iv_row$estimate))
+  expect_equal(iv_row$term_raw, "fit_educ")
+
+  # OLS and FE columns: x1 -> "Regressor"; estimates must be non-NA
+  ols_row <- reg_rows[reg_rows$model == "OLS", ]
+  expect_false(is.na(ols_row$estimate))
+  fe_row  <- reg_rows[reg_rows$model == "FE", ]
+  expect_false(is.na(fe_row$estimate))
+})

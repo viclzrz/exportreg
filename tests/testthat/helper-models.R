@@ -63,6 +63,25 @@ make_fixest_models <- function() {
       y_iv    <- 1 + 2 * x_endog + u
       iv_df   <- data.frame(y = y_iv, x = x_endog, z = z)
       fixest::feols(y ~ 1 | x ~ z, data = iv_df)
+    },
+    feols_iv_fe = {
+      # IV + FE model using | FE | endog ~ instrument formula syntax
+      # (mirrors the README example: feols(log(wage) ~ exper | firm_id |
+      #   educ ~ instrument, ...))
+      set.seed(42)
+      n      <- 500
+      iv_fe_df <- data.frame(
+        wage       = exp(rnorm(n)),
+        educ       = sample(8:16, n, replace = TRUE),
+        exper      = sample(1:30,  n, replace = TRUE),
+        firm_id    = sample(1:50,  n, replace = TRUE),
+        instrument = rnorm(n),
+        stringsAsFactors = FALSE
+      )
+      fixest::feols(
+        log(wage) ~ exper | firm_id | educ ~ instrument,
+        data = iv_fe_df, cluster = ~firm_id
+      )
     }
   )
 }

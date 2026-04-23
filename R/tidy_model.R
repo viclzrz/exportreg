@@ -114,14 +114,33 @@ tidy_model_fixest <- function(model) {
   }
 
   # KP F-stat (IV models only)
+  # Detect IV: fixest stores IV info under different slot names depending on
+  # the formula syntax and version.  Check all known slots.
   iv_first <- tryCatch(model$iv_first_stage, error = function(e) NULL)
-  if (!is.null(iv_first)) {
-    # Primary: fitstat("kpr") API (fixest >= 0.12)
+  iv_inst  <- tryCatch(model$iv_inst_names,  error = function(e) NULL)
+  iv_fml   <- tryCatch(model$fml_all$iv,     error = function(e) NULL)
+  if (!is.null(iv_first) || !is.null(iv_inst) || !is.null(iv_fml)) {
+    # Primary: fitstat("kpr") — Kleibergen-Paap F-stat (fixest >= 0.12)
     kp <- tryCatch({
       fs <- fixest::fitstat(model, "kpr")
       fs$kpr$stat
     }, error = function(e) NULL)
-    # Fallback: legacy iv_stat slot
+    # Fallback 1: fitstat("ivf") — IV F-stat
+    if (is.null(kp) || is.na(kp)) {
+      kp <- tryCatch({
+        fs <- fixest::fitstat(model, "ivf")
+        fs$ivf$stat
+      }, error = function(e) NULL)
+    }
+    # Fallback 2: summary()$iv_weak_stat (named numeric vector in some versions)
+    if (is.null(kp) || is.na(kp)) {
+      kp <- tryCatch({
+        wstat <- summary(model)$iv_weak_stat
+        if (!is.null(wstat) && length(wstat) > 0L) as.numeric(wstat[[1L]])
+        else NULL
+      }, error = function(e) NULL)
+    }
+    # Fallback 3: legacy iv_stat slot
     if (is.null(kp) || is.na(kp)) {
       kp <- tryCatch({
         sm <- summary(model)

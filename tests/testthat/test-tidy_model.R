@@ -216,3 +216,13 @@ test_that("tidy_model.fixest IV model returns correct $depvar", {
   expect_type(tm$depvar, "character")
   expect_equal(tm$depvar, "y")
 })
+
+test_that("tidy_model.fixest IV+FE (| FE | endog ~ inst) returns non-NA kp_fstat", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tm <- exportreg:::tidy_model(mods$feols_iv_fe)
+  expect_type(tm$glance$kp_fstat, "double")
+  expect_false(is.na(tm$glance$kp_fstat))
+  expect_true(tm$glance$kp_fstat > 0)
+})
