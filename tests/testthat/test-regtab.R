@@ -184,21 +184,21 @@ test_that("assemble_panels() inherits se_format and se_type from first panel", {
 test_that("build_se_note() uniform IID type, se_format='se'", {
   se_type <- c("(1)" = "IID", "(2)" = "IID")
   result <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
-  expect_equal(result, "SE in parentheses. SE: IID")
+  expect_equal(result, "Standard errors in parentheses")
 })
 
 test_that("build_se_note() uniform clustered type, se_format='tstat', latex=TRUE", {
   se_type <- c("(1)" = "Clustered (firm_id)")
   result <- exportreg:::build_se_note(se_type, "tstat", latex = TRUE)
   expect_true(grepl("t\\$-statistics", result))
-  expect_true(grepl("Clustered \\(firm_id\\)", result))
+  expect_true(grepl("firm_id", result, fixed = TRUE))
 })
 
 test_that("build_se_note() mixed types groups by type with column labels", {
   se_type <- c("(1)" = "IID", "(2)" = "Clustered (x)")
   result <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
-  expect_true(grepl("IID", result))
-  expect_true(grepl("Clustered", result))
+  expect_true(grepl("in parentheses", result, fixed = TRUE))
+  expect_true(grepl("clustered at", result, fixed = TRUE))
   expect_true(grepl("\\(1\\)", result))
   expect_true(grepl("\\(2\\)", result))
 })
@@ -210,7 +210,8 @@ test_that("build_se_note() cluster_labels provided — used directly", {
     cluster_labels = c(firm_id = "Firm"),
     latex = FALSE
   )
-  expect_true(grepl("Clustered (Firm)", result, fixed = TRUE))
+  expect_true(grepl("Firm", result, fixed = TRUE))
+  expect_true(grepl("clustered at the Firm level", result, fixed = TRUE))
   expect_false(grepl("firm_id", result, fixed = TRUE))
 })
 
@@ -221,14 +222,16 @@ test_that("build_se_note() cluster_labels NULL, variable in fe_labels — fe_lab
     fe_labels = c(firm_id = "Firm FE"),
     latex = FALSE
   )
-  expect_true(grepl("Clustered (Firm FE)", result, fixed = TRUE))
+  expect_true(grepl("Firm FE", result, fixed = TRUE))
+  expect_true(grepl("clustered at the Firm FE level", result, fixed = TRUE))
   expect_false(grepl("firm_id", result, fixed = TRUE))
 })
 
 test_that("build_se_note() cluster_labels NULL, fe_labels NULL — raw name used", {
   se_type <- c("(1)" = "Clustered (firm_id)")
   result  <- exportreg:::build_se_note(se_type, "se", latex = FALSE)
-  expect_true(grepl("Clustered (firm_id)", result, fixed = TRUE))
+  expect_true(grepl("firm_id", result, fixed = TRUE))
+  expect_true(grepl("clustered at the firm_id level", result, fixed = TRUE))
 })
 
 test_that("build_se_note() twoway: one in cluster_labels, one falls back to fe_labels", {

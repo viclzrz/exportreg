@@ -180,3 +180,51 @@ test_that("to_excel() depvar row appears for two models with different depvars",
   expect_true(any(vapply(dat, function(col) any(col == "y_bin", na.rm = TRUE),
                          logical(1L))))
 })
+
+# ---------------------------------------------------------------------------
+# SE note construction — regression tests for Bug 1 and Bug 2 fixes
+# ---------------------------------------------------------------------------
+
+test_that("to_excel() note contains constructed cluster string with cluster_labels", {
+  skip_if_not_installed("openxlsx2")
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tab <- regtab(
+    list("(1)" = mods$feols_clustered),
+    cluster_labels = c("firm_id" = "Firm")
+  )
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  to_excel(tab, file = tmp)
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  all_cells <- unlist(lapply(dat, as.character))
+  note_cells <- all_cells[grepl("Note", all_cells, fixed = TRUE)]
+  expect_true(length(note_cells) > 0L)
+  expect_true(any(grepl(
+    "Standard errors clustered at the Firm level in parentheses",
+    note_cells, fixed = TRUE
+  )))
+})
+
+test_that("to_excel() note does not contain 'SE:' or raw var names when cluster_labels provided", {
+  skip_if_not_installed("openxlsx2")
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tab <- regtab(
+    list("(1)" = mods$feols_clustered),
+    cluster_labels = c("firm_id" = "Firm")
+  )
+  tmp <- tempfile(fileext = ".xlsx")
+  on.exit(unlink(tmp))
+  to_excel(tab, file = tmp)
+  wb  <- openxlsx2::wb_load(tmp)
+  dat <- openxlsx2::wb_read(wb, sheet = 1L, col_names = FALSE)
+  all_cells <- unlist(lapply(dat, as.character))
+  note_cells <- all_cells[grepl("Note", all_cells, fixed = TRUE)]
+  expect_true(length(note_cells) > 0L)
+  expect_false(any(grepl("SE:", note_cells, fixed = TRUE)))
+  expect_false(any(grepl("firm_id", note_cells, fixed = TRUE)))
+})

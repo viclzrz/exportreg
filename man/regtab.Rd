@@ -17,7 +17,8 @@ regtab(
   col_groups = NULL,
   panels = NULL,
   se_format = "se",
-  depvar_labels = NULL
+  depvar_labels = NULL,
+  cluster_labels = NULL
 )
 }
 \arguments{
@@ -65,6 +66,12 @@ shows p-values in brackets.}
 variable strings to display labels,
 e.g. \code{c("log(wage)" = "Log Wage")}. \code{NULL} (default) uses the raw
 extracted string.}
+
+\item{cluster_labels}{Named character vector mapping raw cluster variable
+names to display labels for the SE note,
+e.g. \code{c("firm_id" = "Firm", "worker_id" = "Worker")}. Takes priority over
+\code{fe_labels} when a variable appears in both. \code{NULL} (default) falls back
+to \code{fe_labels}, then to the raw variable name.}
 }
 \value{
 An object of class \code{regtab_table}.

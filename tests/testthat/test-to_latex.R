@@ -85,11 +85,11 @@ test_that("to_latex() FE block appears when fixest model used", {
 # se_format tests
 # ---------------------------------------------------------------------------
 
-test_that("to_latex() se_format='se' note contains 'SE in parentheses'", {
+test_that("to_latex() se_format='se' note contains 'in parentheses'", {
   tab <- regtab(list("(1)" = lm_basic), se_format = "se")
   res <- capture.output(lines <- to_latex(tab))
   combined <- paste(lines, collapse = "\n")
-  expect_true(grepl("SE in parentheses", combined))
+  expect_true(grepl("in parentheses", combined, fixed = TRUE))
 })
 
 test_that("to_latex() se_format='se' second-row cells contain parentheses", {
@@ -222,4 +222,38 @@ test_that("to_latex() two models with different depvars both shown", {
   combined <- paste(lines, collapse = "\n")
   # y_bin is LaTeX-escaped to y\_bin
   expect_true(grepl("y\\\\_bin|y_bin", combined))
+})
+
+# ---------------------------------------------------------------------------
+# SE note construction — regression tests for Bug 1 and Bug 2 fixes
+# ---------------------------------------------------------------------------
+
+test_that("to_latex() note contains constructed cluster string with cluster_labels", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tab <- regtab(
+    list("(1)" = mods$feols_clustered),
+    cluster_labels = c("firm_id" = "Firm")
+  )
+  res <- capture.output(lines <- to_latex(tab))
+  note_line <- paste(lines[grepl("Note", lines)], collapse = "\n")
+  expect_true(
+    grepl("Standard errors clustered at the Firm level in parentheses",
+          note_line, fixed = TRUE)
+  )
+})
+
+test_that("to_latex() note does not contain 'SE:' or raw var names when cluster_labels provided", {
+  skip_if_not_installed("fixest")
+  mods <- make_fixest_models()
+  skip_if(is.null(mods))
+  tab <- regtab(
+    list("(1)" = mods$feols_clustered),
+    cluster_labels = c("firm_id" = "Firm")
+  )
+  res <- capture.output(lines <- to_latex(tab))
+  note_line <- paste(lines[grepl("Note", lines)], collapse = "\n")
+  expect_false(grepl("SE:", note_line, fixed = TRUE))
+  expect_false(grepl("firm_id", note_line, fixed = TRUE))
 })
