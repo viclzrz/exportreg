@@ -104,16 +104,17 @@ tex_stat_row <- function(label, values, integer = FALSE, digits = 3L) {
 #' label in bold.
 #'
 #' @param label Character. Panel label, e.g. \code{"Panel A: Wages"}.
-#' @param ncols Integer. Total column count (label column + data columns).
+#' @param ncols Integer. Number of DATA columns (excluding the label column).
+#'   The \code{\\multicolumn} span is \code{ncols + 1} internally.
 #'
 #' @return \code{character(1)} — a \code{\\multicolumn} row.
 #'
 #' @examples
-#' tex_panel("Panel A: Main results", ncols = 4L)
+#' tex_panel("Panel A: Main results", ncols = 3L)  # spans 4 columns total
 #'
 #' @export
 tex_panel <- function(label, ncols) {
-  paste0("\\multicolumn{", ncols, "}{l}{\\textbf{", label, "}} \\\\")
+  paste0("\\multicolumn{", as.integer(ncols) + 1L, "}{l}{\\textbf{", label, "}} \\\\")
 }
 
 #' Return a booktabs horizontal rule
@@ -128,17 +129,18 @@ tex_hline <- function() "\\midrule"
 
 #' Build a LaTeX blank spacer row
 #'
-#' @param ncols Integer. Total column count (label column + data columns).
+#' @param ncols Integer. Number of DATA columns (excluding the label column).
+#'   The row contains \code{ncols + 1} empty cells in total.
 #'
-#' @return \code{character(1)} — \code{ncols} empty cells joined by \code{ & },
-#'   ending in \code{ \\}.
+#' @return \code{character(1)} — \code{ncols + 1} empty cells joined by
+#'   \code{ & }, ending in \code{ \\}.
 #'
 #' @examples
-#' tex_blank_row(3L)
+#' tex_blank_row(3L)  # produces 4 empty cells (1 label + 3 data)
 #'
 #' @export
 tex_blank_row <- function(ncols) {
-  row_line(rep("", as.integer(ncols)))
+  row_line(rep("", as.integer(ncols) + 1L))
 }
 
 # ---------------------------------------------------------------------------
@@ -222,8 +224,10 @@ tex_note_line <- function(n_cols, se_type, se_format, fe_labels,
 #'   text (no automatic SE-type sentence).
 #' @param digits Integer or \code{NULL}. Override digits for this render call
 #'   only (Mode A only). \code{NULL} uses \code{x$digits}.
-#' @param ncols Integer or \code{NULL}. Total column count (label col + data
-#'   cols). Required in Mode B; ignored in Mode A.
+#' @param ncols Integer or \code{NULL}. Number of DATA columns (excluding the
+#'   label column). The tabular \code{col_spec} and \code{\\multicolumn} spans
+#'   are derived as \code{ncols + 1} internally. Required in Mode B; ignored
+#'   in Mode A.
 #'
 #' @return Character vector of LaTeX lines, invisibly.
 #'
@@ -264,9 +268,9 @@ tex_table <- function(x       = NULL,
       stop("exportreg: `ncols` is required when supplying `rows`.", call. = FALSE)
     }
     ncols    <- as.integer(ncols)
-    col_spec <- paste0("l", paste(rep("c", ncols - 1L), collapse = ""))
+    col_spec <- paste0("l", paste(rep("c", ncols), collapse = ""))
     note_line <- if (!is.null(note) && nchar(note) > 0L) {
-      paste0("\\multicolumn{", ncols, "}{l}{\\textit{Note:} ", note, "} \\\\")
+      paste0("\\multicolumn{", ncols + 1L, "}{l}{\\textit{Note:} ", note, "} \\\\")
     } else {
       character(0L)
     }
@@ -319,7 +323,7 @@ tex_table <- function(x       = NULL,
       is_hdr <- term_order$is_factor_header[[i]]
 
       if (is_hdr) {
-        coef_lines <- c(coef_lines, tex_panel(tdisp, n_cols))
+        coef_lines <- c(coef_lines, tex_panel(tdisp, n_models))
       } else {
         # Estimate row
         if (digits_override) {

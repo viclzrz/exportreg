@@ -45,8 +45,10 @@ text (no automatic SE-type sentence).}
 \item{digits}{Integer or \code{NULL}. Override digits for this render call
 only (Mode A only). \code{NULL} uses \code{x$digits}.}
 
-\item{ncols}{Integer or \code{NULL}. Total column count (label col + data
-cols). Required in Mode B; ignored in Mode A.}
+\item{ncols}{Integer or \code{NULL}. Number of DATA columns (excluding the
+label column). The tabular \code{col_spec} and \code{\\multicolumn} spans
+are derived as \code{ncols + 1} internally. Required in Mode B; ignored
+in Mode A.}
 }
 \value{
 Character vector of LaTeX lines, invisibly.

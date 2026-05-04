@@ -7,16 +7,17 @@
 tex_blank_row(ncols)
 }
 \arguments{
-\item{ncols}{Integer. Total column count (label column + data columns).}
+\item{ncols}{Integer. Number of DATA columns (excluding the label column).
+The row contains \code{ncols + 1} empty cells in total.}
 }
 \value{
-\code{character(1)} — \code{ncols} empty cells joined by \code{ & },
-ending in \code{ \\}.
+\code{character(1)} — \code{ncols + 1} empty cells joined by
+\code{ & }, ending in \code{ \\}.
 }
 \description{
 Build a LaTeX blank spacer row
 }
 \examples{
-tex_blank_row(3L)
+tex_blank_row(3L)  # produces 4 empty cells (1 label + 3 data)
 
 }

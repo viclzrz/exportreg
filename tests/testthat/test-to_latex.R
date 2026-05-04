@@ -371,7 +371,8 @@ test_that("tex_stat_row() NA value produces empty cell", {
 # ---------------------------------------------------------------------------
 
 test_that("tex_panel() contains \\multicolumn with correct ncols", {
-  res <- tex_panel("Panel A", ncols = 4L)
+  # ncols = 3 data columns → \multicolumn{4} (label + 3 data)
+  res <- tex_panel("Panel A", ncols = 3L)
   expect_true(grepl("\\\\multicolumn\\{4\\}", res))
 })
 
@@ -399,8 +400,9 @@ test_that("tex_blank_row() returns character(1) ending in ' \\\\'", {
   expect_true(endsWith(res, " \\\\"))
 })
 
-test_that("tex_blank_row() number of & separators equals ncols - 1", {
-  res <- tex_blank_row(4L)
+test_that("tex_blank_row() number of & separators equals ncols", {
+  # ncols = 3 data columns → 4 cells total → 3 & separators
+  res <- tex_blank_row(3L)
   n_amp <- lengths(regmatches(res, gregexpr("&", res)))
   expect_equal(n_amp, 3L)
 })
@@ -410,27 +412,29 @@ test_that("tex_blank_row() number of & separators equals ncols - 1", {
 # ---------------------------------------------------------------------------
 
 test_that("tex_table() Mode B minimal call produces valid tabular structure", {
-  res <- capture.output(lines <- tex_table(rows = character(0), ncols = 2L))
+  # ncols = 1 data column → col_spec "lc"
+  res <- capture.output(lines <- tex_table(rows = character(0), ncols = 1L))
   expect_true(any(grepl("\\\\begin\\{tabular\\}", lines)))
   expect_true(any(grepl("\\\\toprule", lines)))
   expect_true(any(grepl("\\\\bottomrule", lines)))
 })
 
 test_that("tex_table() Mode B rows assembled from helpers produce no error", {
+  # 2 data columns: ncols = 2 → col_spec "lcc", tex_panel spans \multicolumn{3}
   rows <- c(
-    tex_panel("Panel A", ncols = 3L),
+    tex_panel("Panel A", ncols = 2L),
     tex_coef_row("X", b = c(0.5, 1.2), p = c(0.3, 0.001)),
     tex_se_row(se = c(0.05, 0.10)),
     tex_hline(),
     tex_stat_row("$N$", values = c(50L, 60L), integer = TRUE)
   )
-  expect_no_error(capture.output(tex_table(rows = rows, ncols = 3L)))
+  expect_no_error(capture.output(tex_table(rows = rows, ncols = 2L)))
 })
 
 test_that("tex_table() Mode B note appended correctly", {
   res <- capture.output(lines <- tex_table(
     rows  = character(0),
-    ncols = 2L,
+    ncols = 1L,
     note  = "Source: own calculations."
   ))
   combined <- paste(lines, collapse = "\n")
@@ -439,6 +443,7 @@ test_that("tex_table() Mode B note appended correctly", {
 })
 
 test_that("tex_table() Mode B end-to-end 3-column table uses only exported helpers", {
+  # 2 data columns: ncols = 2 → col_spec "lcc" (1 label + 2 data)
   rows <- c(
     row_header <- paste(" & (1) & (2) \\\\"),
     tex_hline(),
@@ -447,7 +452,7 @@ test_that("tex_table() Mode B end-to-end 3-column table uses only exported helpe
     tex_hline(),
     tex_stat_row("$N$", values = c(100L, 200L), integer = TRUE)
   )
-  res <- capture.output(lines <- tex_table(rows = rows, ncols = 3L))
+  res <- capture.output(lines <- tex_table(rows = rows, ncols = 2L))
   combined <- paste(lines, collapse = "\n")
   expect_true(grepl("\\\\begin\\{tabular\\}\\{lcc\\}", combined))
   expect_true(grepl("\\\\bottomrule", combined))
@@ -456,7 +461,7 @@ test_that("tex_table() Mode B end-to-end 3-column table uses only exported helpe
 test_that("tex_table() Mode B format='full' wraps in documentclass/document", {
   res <- capture.output(lines <- tex_table(
     rows   = character(0),
-    ncols  = 2L,
+    ncols  = 1L,
     format = "full"
   ))
   expect_true(any(grepl("\\\\documentclass", lines)))

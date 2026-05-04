@@ -9,7 +9,8 @@ tex_panel(label, ncols)
 \arguments{
 \item{label}{Character. Panel label, e.g. \code{"Panel A: Wages"}.}
 
-\item{ncols}{Integer. Total column count (label column + data columns).}
+\item{ncols}{Integer. Number of DATA columns (excluding the label column).
+The \code{\\multicolumn} span is \code{ncols + 1} internally.}
 }
 \value{
 \code{character(1)} — a \code{\\multicolumn} row.
@@ -19,6 +20,6 @@ Produces a full-width panel-header row spanning all columns, with the
 label in bold.
 }
 \examples{
-tex_panel("Panel A: Main results", ncols = 4L)
+tex_panel("Panel A: Main results", ncols = 3L)  # spans 4 columns total
 
 }
