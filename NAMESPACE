@@ -2,5 +2,12 @@
 
 S3method(print,regtab_table)
 export(regtab)
+export(tex_blank_row)
+export(tex_coef_row)
+export(tex_hline)
+export(tex_panel)
+export(tex_se_row)
+export(tex_stat_row)
+export(tex_table)
 export(to_excel)
 export(to_latex)

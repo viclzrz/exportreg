@@ -257,3 +257,223 @@ test_that("to_latex() note does not contain 'SE:' or raw var names when cluster_
   expect_false(grepl("SE:", note_line, fixed = TRUE))
   expect_false(grepl("firm_id", note_line, fixed = TRUE))
 })
+
+# ---------------------------------------------------------------------------
+# tex_coef_row() — 5 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_coef_row() returns character(1) ending in ' \\\\'", {
+  res <- tex_coef_row("Age", b = c(0.5, 1.2), p = c(0.3, 0.001))
+  expect_type(res, "character")
+  expect_length(res, 1L)
+  expect_true(endsWith(res, " \\\\"))
+})
+
+test_that("tex_coef_row() applies math-mode stars for p < 0.05", {
+  res <- tex_coef_row("X", b = 0.5, p = 0.03)
+  expect_true(grepl("\\$\\^\\{\\*\\*\\}\\$", res))
+})
+
+test_that("tex_coef_row() NA estimate produces empty cell, no error", {
+  res <- tex_coef_row("X", b = c(NA, 1.0), p = c(NA, 0.5))
+  expect_type(res, "character")
+  expect_length(res, 1L)
+  # First data cell is empty (two consecutive & or & at start after label)
+  parts <- strsplit(res, " & ")[[1L]]
+  expect_equal(trimws(parts[[2L]]), "")
+})
+
+test_that("tex_coef_row() digits = 2L formats to 2 decimal places", {
+  res <- tex_coef_row("X", b = 1.23456, p = 0.5, digits = 2L)
+  expect_true(grepl("1\\.23", res))
+  expect_false(grepl("1\\.234", res))
+})
+
+test_that("tex_coef_row() all-NA b produces label with all-empty cells", {
+  res <- tex_coef_row("X", b = c(NA, NA), p = c(NA, NA))
+  parts <- strsplit(res, " & ")[[1L]]
+  # label cell + 2 empty cells
+  expect_length(parts, 3L)
+  expect_equal(trimws(gsub(" \\\\\\\\$", "", parts[[2L]])), "")
+  expect_equal(trimws(gsub(" \\\\\\\\$", "", parts[[3L]])), "")
+})
+
+# ---------------------------------------------------------------------------
+# tex_se_row() — 5 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_se_row() returns character(1) with leading empty label cell", {
+  res <- tex_se_row(se = c(0.05, 0.10))
+  expect_type(res, "character")
+  expect_length(res, 1L)
+  # First cell (label position) is empty
+  parts <- strsplit(res, " & ")[[1L]]
+  expect_equal(parts[[1L]], "")
+})
+
+test_that("tex_se_row() format='se' wraps in parentheses", {
+  res <- tex_se_row(se = 0.045, format = "se")
+  expect_true(grepl("\\(", res))
+  expect_true(grepl("\\)", res))
+})
+
+test_that("tex_se_row() format='tstat' wraps in brackets", {
+  res <- tex_se_row(se = 2.73, format = "tstat")
+  expect_true(grepl("\\[", res))
+  expect_true(grepl("\\]", res))
+})
+
+test_that("tex_se_row() format='pvalue' wraps in brackets", {
+  res <- tex_se_row(se = 0.032, format = "pvalue")
+  expect_true(grepl("\\[", res))
+  expect_true(grepl("\\]", res))
+})
+
+test_that("tex_se_row() NA value produces empty cell; & count is correct", {
+  res <- tex_se_row(se = c(0.05, NA, 0.10))
+  parts <- strsplit(res, " & ")[[1L]]
+  # label + 3 data cells = 4 parts
+  expect_length(parts, 4L)
+  # Second data cell (index 3) is empty
+  expect_equal(trimws(gsub(" \\\\\\\\$", "", parts[[3L]])), "")
+})
+
+# ---------------------------------------------------------------------------
+# tex_stat_row() — 4 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_stat_row() returns character(1) containing the label", {
+  res <- tex_stat_row("$N$", values = 100L, integer = TRUE)
+  expect_type(res, "character")
+  expect_length(res, 1L)
+  expect_true(grepl("$N$", res, fixed = TRUE))
+})
+
+test_that("tex_stat_row() integer=FALSE formats to digits decimal places", {
+  res <- tex_stat_row("$R^{2}$", values = 0.45678, digits = 3L)
+  expect_true(grepl("0\\.457", res))
+})
+
+test_that("tex_stat_row() integer=TRUE formats as comma-separated integer", {
+  res <- tex_stat_row("$N$", values = 1234L, integer = TRUE)
+  expect_true(grepl("1,234", res, fixed = TRUE))
+})
+
+test_that("tex_stat_row() NA value produces empty cell", {
+  res <- tex_stat_row("$N$", values = c(100L, NA), integer = TRUE)
+  parts <- strsplit(res, " & ")[[1L]]
+  last <- trimws(gsub(" \\\\\\\\$", "", parts[[length(parts)]]))
+  expect_equal(last, "")
+})
+
+# ---------------------------------------------------------------------------
+# tex_panel() — 2 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_panel() contains \\multicolumn with correct ncols", {
+  res <- tex_panel("Panel A", ncols = 4L)
+  expect_true(grepl("\\\\multicolumn\\{4\\}", res))
+})
+
+test_that("tex_panel() contains \\textbf with the supplied label", {
+  res <- tex_panel("Panel A: Main", ncols = 3L)
+  expect_true(grepl("\\\\textbf\\{Panel A: Main\\}", res))
+})
+
+# ---------------------------------------------------------------------------
+# tex_hline() — 1 test
+# ---------------------------------------------------------------------------
+
+test_that("tex_hline() returns '\\midrule' exactly", {
+  expect_equal(tex_hline(), "\\midrule")
+})
+
+# ---------------------------------------------------------------------------
+# tex_blank_row() — 2 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_blank_row() returns character(1) ending in ' \\\\'", {
+  res <- tex_blank_row(3L)
+  expect_type(res, "character")
+  expect_length(res, 1L)
+  expect_true(endsWith(res, " \\\\"))
+})
+
+test_that("tex_blank_row() number of & separators equals ncols - 1", {
+  res <- tex_blank_row(4L)
+  n_amp <- lengths(regmatches(res, gregexpr("&", res)))
+  expect_equal(n_amp, 3L)
+})
+
+# ---------------------------------------------------------------------------
+# tex_table() Mode B — 7 tests
+# ---------------------------------------------------------------------------
+
+test_that("tex_table() Mode B minimal call produces valid tabular structure", {
+  res <- capture.output(lines <- tex_table(rows = character(0), ncols = 2L))
+  expect_true(any(grepl("\\\\begin\\{tabular\\}", lines)))
+  expect_true(any(grepl("\\\\toprule", lines)))
+  expect_true(any(grepl("\\\\bottomrule", lines)))
+})
+
+test_that("tex_table() Mode B rows assembled from helpers produce no error", {
+  rows <- c(
+    tex_panel("Panel A", ncols = 3L),
+    tex_coef_row("X", b = c(0.5, 1.2), p = c(0.3, 0.001)),
+    tex_se_row(se = c(0.05, 0.10)),
+    tex_hline(),
+    tex_stat_row("$N$", values = c(50L, 60L), integer = TRUE)
+  )
+  expect_no_error(capture.output(tex_table(rows = rows, ncols = 3L)))
+})
+
+test_that("tex_table() Mode B note appended correctly", {
+  res <- capture.output(lines <- tex_table(
+    rows  = character(0),
+    ncols = 2L,
+    note  = "Source: own calculations."
+  ))
+  combined <- paste(lines, collapse = "\n")
+  expect_true(grepl("Source: own calculations", combined, fixed = TRUE))
+  expect_true(grepl("\\\\textit\\{Note:\\}", combined))
+})
+
+test_that("tex_table() Mode B end-to-end 3-column table uses only exported helpers", {
+  rows <- c(
+    row_header <- paste(" & (1) & (2) \\\\"),
+    tex_hline(),
+    tex_coef_row("Intercept", b = c(0.1, 0.2), p = c(0.5, 0.5)),
+    tex_se_row(se = c(0.05, 0.06)),
+    tex_hline(),
+    tex_stat_row("$N$", values = c(100L, 200L), integer = TRUE)
+  )
+  res <- capture.output(lines <- tex_table(rows = rows, ncols = 3L))
+  combined <- paste(lines, collapse = "\n")
+  expect_true(grepl("\\\\begin\\{tabular\\}\\{lcc\\}", combined))
+  expect_true(grepl("\\\\bottomrule", combined))
+})
+
+test_that("tex_table() Mode B format='full' wraps in documentclass/document", {
+  res <- capture.output(lines <- tex_table(
+    rows   = character(0),
+    ncols  = 2L,
+    format = "full"
+  ))
+  expect_true(any(grepl("\\\\documentclass", lines)))
+  expect_true(any(grepl("\\\\begin\\{document\\}", lines)))
+  expect_true(any(grepl("\\\\end\\{document\\}", lines)))
+})
+
+test_that("tex_table() errors when neither x nor rows supplied", {
+  expect_error(
+    capture.output(tex_table()),
+    "supply either"
+  )
+})
+
+test_that("tex_table() errors when rows supplied but ncols missing", {
+  expect_error(
+    capture.output(tex_table(rows = character(0))),
+    "ncols"
+  )
+})
