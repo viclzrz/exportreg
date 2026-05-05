@@ -14,9 +14,9 @@ RoxygenNote: 7.3.3
 Depends:
     R (>= 4.1.0)
 Imports:
-    fixest,
+    fixest (>= 0.14.1),
     broom,
-    openxlsx2
+    openxlsx2 (>= 1.26)
 Suggests:
     lfe,
     AER,
