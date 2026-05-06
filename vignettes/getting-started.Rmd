@@ -237,6 +237,105 @@ and the statistics block accumulates rows from both panels.
 
 ---
 
+## Custom tables from pre-computed estimates
+
+`tex_table()` Mode B is for cases where results do not come from R model
+objects — for example pre-computed estimates imported from a CSV, Stata
+output, or bootstrap results.  Instead of passing a `regtab_table`, you
+supply a character vector of pre-built row lines produced by the helper
+functions (`tex_coef_row()`, `tex_se_row()`, `tex_stat_row()`,
+`tex_panel()`, `tex_hline()`) and tell `tex_table()` how many data columns
+the table has.  No model fitting is required.
+
+### Single-panel example
+
+```{r precomputed-setup}
+set.seed(42)
+
+# Pre-computed estimates (as if imported from a CSV or Stata output)
+outcomes  <- c("Dropout", "Absent", "Conduct", "GPA (z)", "GPA math (z)")
+b_treat   <- c(-0.012, -0.431,  0.008,  0.042,  0.071)
+se_treat  <- c( 0.009,  0.318,  0.011,  0.038,  0.034)
+p_treat   <- c( 0.187,  0.175,  0.468,  0.271,  0.038)
+n_obs     <- c(1243L,  1243L,  1198L,  1201L,  1201L)
+mean_ctrl <- c( 0.089,  4.832,  0.043,  0.000, -0.001)
+```
+
+```{r precomputed-basic}
+tab <- tex_table(
+  rows = c(
+    tex_coef_row("Treatment", b = b_treat, p = p_treat),
+    tex_se_row(se_treat),
+    tex_hline(),
+    tex_stat_row("Observations", n_obs, integer = TRUE),
+    tex_stat_row("Control mean", mean_ctrl)
+  ),
+  ncols = 5,
+  note  = paste("Standard errors in parentheses.",
+                "*** p<0.01, ** p<0.05, * p<0.1")
+)
+```
+
+`ncols = 5` tells `tex_table()` that there are five data columns (one per
+outcome); the label column is added automatically.  The `note` argument
+supplies the full footnote text — no automatic SE-type sentence is appended
+in Mode B.
+
+### Multi-panel example
+
+Use `tex_panel()` to insert bold panel-header rows when stacking subgroups
+vertically.
+
+```{r precomputed-panels}
+b_male    <- c(-0.008, -0.287,  0.003,  0.031,  0.089)
+se_male   <- c( 0.011,  0.401,  0.014,  0.049,  0.044)
+p_male    <- c( 0.468,  0.474,  0.812,  0.528,  0.044)
+
+b_female  <- c(-0.019, -0.612, -0.001,  0.055,  0.051)
+se_female <- c( 0.013,  0.471,  0.016,  0.052,  0.047)
+p_female  <- c( 0.143,  0.194,  0.951,  0.291,  0.278)
+
+tab_panels <- tex_table(
+  rows = c(
+    tex_panel("Panel A: Male students",   ncols = 5),
+    tex_coef_row("Treatment", b = b_male, p = p_male),
+    tex_se_row(se_male),
+    tex_hline(),
+    tex_panel("Panel B: Female students", ncols = 5),
+    tex_coef_row("Treatment", b = b_female, p = p_female),
+    tex_se_row(se_female),
+    tex_hline(),
+    tex_stat_row("Observations", n_obs, integer = TRUE),
+    tex_stat_row("Control mean", mean_ctrl)
+  ),
+  ncols = 5,
+  note  = paste("Standard errors in parentheses.",
+                "*** p<0.01, ** p<0.05, * p<0.1")
+)
+```
+
+### Writing to a file
+
+Pass `file` to write the LaTeX source directly to disk:
+
+```{r precomputed-file, eval=FALSE}
+tex_table(
+  rows = c(
+    tex_coef_row("Treatment", b = b_treat, p = p_treat),
+    tex_se_row(se_treat),
+    tex_hline(),
+    tex_stat_row("Observations", n_obs, integer = TRUE),
+    tex_stat_row("Control mean", mean_ctrl)
+  ),
+  ncols = 5,
+  note  = paste("Standard errors in parentheses.",
+                "*** p<0.01, ** p<0.05, * p<0.1"),
+  file  = "table_custom.tex"
+)
+```
+
+---
+
 ## 6  Excel export
 
 `to_excel()` writes to an `.xlsx` file using `openxlsx2` (no Java
