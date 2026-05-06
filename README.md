@@ -167,6 +167,44 @@ to_excel(tab, file = "table1.xlsx")
 # to_excel(tab, file = "table1.xlsx", raw = TRUE)
 ```
 
+### Example 4 — custom table from pre-computed estimates
+
+`tex_table()` Mode B builds a LaTeX table directly from pre-computed
+vectors — no model objects required. Useful when estimates come from a
+CSV, Stata output, or bootstrap results.
+
+``` r
+outcomes  <- c("Dropout", "Absent", "Conduct", "GPA (z)", "GPA math (z)")
+b_treat   <- c(-0.012, -0.431,  0.008,  0.042,  0.071)
+se_treat  <- c( 0.009,  0.318,  0.011,  0.038,  0.034)
+p_treat   <- c( 0.187,  0.175,  0.468,  0.271,  0.038)
+n_obs     <- c(1243L,  1243L,  1198L,  1201L,  1201L)
+mean_ctrl <- c( 0.089,  4.832,  0.043,  0.000, -0.001)
+
+tex_table(
+  rows = c(
+    tex_coef_row("Treatment", b = b_treat, p = p_treat),
+    tex_se_row(se_treat),
+    tex_hline(),
+    tex_stat_row("Observations", n_obs, integer = TRUE),
+    tex_stat_row("Control mean", mean_ctrl)
+  ),
+  ncols = 5,
+  note  = paste("Standard errors in parentheses.",
+                "*** p<0.01, ** p<0.05, * p<0.1")
+)
+\begin{tabular}{lccccc}
+\toprule
+Treatment & -0.012 & -0.431 & 0.008 & 0.042 & 0.071$^{**}$ \\
+ & (0.009) & (0.318) & (0.011) & (0.038) & (0.034) \\
+\midrule
+Observations & 1,243 & 1,243 & 1,198 & 1,201 & 1,201 \\
+Control mean & 0.089 & 4.832 & 0.043 & 0.000 & -0.001 \\
+\bottomrule
+\multicolumn{6}{l}{\textit{Note:} Standard errors in parentheses. *** p<0.01, ** p<0.05, * p<0.1} \\
+\end{tabular} 
+```
+
 ## Full documentation
 
 For a full walkthrough including multi-panel tables and all available
